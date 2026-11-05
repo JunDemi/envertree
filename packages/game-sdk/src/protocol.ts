@@ -25,9 +25,13 @@ export type ReadyMessage = MessageBase<"ready">;
 /** 한 판이 시작됨 */
 export type GameStartMessage = MessageBase<"gameStart">;
 
-/** 한 판이 끝남. score는 0 이상의 유한한 숫자 */
+/**
+ * 한 판이 끝남.
+ * - score: 0 이상의 유한한 숫자 (필수)
+ * - wave: 도달한 웨이브/스테이지 (선택, 1 이상의 정수). 웨이브 개념이 없는 게임은 생략
+ */
 export interface GameOverMessage extends MessageBase<"gameOver"> {
-  payload: { score: number };
+  payload: { score: number; wave?: number };
 }
 
 export type GameMessage = ReadyMessage | GameStartMessage | GameOverMessage;
@@ -50,11 +54,13 @@ export function parseGameMessage(data: unknown): GameMessage | null {
       if (!isObject(payload)) return null;
       const score = payload.score;
       if (typeof score !== "number" || !Number.isFinite(score) || score < 0) return null;
+      const wave = payload.wave;
+      if (wave !== undefined && (typeof wave !== "number" || !Number.isInteger(wave) || wave < 1)) return null;
       return {
         source: MESSAGE_SOURCE,
         version: PROTOCOL_VERSION,
         type: "gameOver",
-        payload: { score },
+        payload: wave === undefined ? { score } : { score, wave },
       };
     }
     default:

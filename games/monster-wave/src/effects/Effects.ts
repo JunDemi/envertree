@@ -34,8 +34,13 @@ export class Effects {
     this.fire.setDepth(1e6 + 1);
   }
 
-  /** 폭발: 바닥에 퍼지는 원 + 불꽃 파편 */
+  /** 폭발: 바닥에 퍼지는 원 + 불꽃 파편 + 바닥 그을음 */
   explosion(x: number, y: number, radius: number) {
+    // 그을음: 바닥(모든 오브젝트 아래)에 남았다가 천천히 사라짐
+    const scorch = this.scene.add.image(x, y, TEX.shadow).setDepth(-1e6).setAlpha(0.45);
+    scorch.setDisplaySize(radius * 0.9, radius * 0.5);
+    this.scene.tweens.add({ targets: scorch, alpha: 0, delay: 4000, duration: 2500, onComplete: () => scorch.destroy() });
+
     const ring = this.scene.add.image(x, y, TEX.blast).setTint(0xfb923c).setDepth(1e6);
     ring.setDisplaySize(radius * 0.4, radius * 0.25);
     this.scene.tweens.add({

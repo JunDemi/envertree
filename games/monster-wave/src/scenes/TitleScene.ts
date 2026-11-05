@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import { gameConfig, monsters, playerConfig } from "../config";
 import { TEX, monsterTexture } from "../assets/keys";
+import { sfx } from "../audio/Sfx";
 import { notifyReady } from "../portal";
+import { storage } from "../storage";
 import { addShadow, placeOnGround } from "../view/depth";
 import { FONT, textStyle } from "../ui/text";
 import { SCENES } from "./keys";
@@ -51,7 +53,23 @@ export class TitleScene extends Phaser.Scene {
     const prompt = this.add.text(cx, height - 110, "클릭 또는 Space로 시작", textStyle(26, "#facc15", true)).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.35, duration: 650, yoyo: true, repeat: -1 });
 
-    this.add.text(width - 12, height - 10, "Phase 4 프로토타입", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(1, 1);
+    const best = storage.getBestScore();
+    if (best > 0) {
+      this.add.text(cx, 482, `최고 점수  ${best.toLocaleString()}`, textStyle(18, "#fde68a", true)).setOrigin(0.5);
+    }
+    this.add.text(12, height - 10, "프로토타입 · 모든 그래픽과 소리는 코드로 생성", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(0, 1);
+    const mute = this.add.text(width - 12, height - 10, "", textStyle(13, "#94a3b8", true)).setOrigin(1, 1).setInteractive({ useHandCursor: true });
+    const refreshMute = () => mute.setText(sfx.muted ? "소리 꺼짐 (M)" : "소리 켜짐 (M)");
+    refreshMute();
+    mute.on("pointerdown", (_p: unknown, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      sfx.toggleMute();
+      refreshMute();
+    });
+    this.input.keyboard?.on("keydown-M", () => {
+      sfx.toggleMute();
+      refreshMute();
+    });
 
     notifyReady();
 

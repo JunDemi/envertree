@@ -41,6 +41,7 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [status, setStatus] = useState<GameStatus>("loading");
   const [lastScore, setLastScore] = useState<number | null>(null);
+  const [lastWave, setLastWave] = useState<number | null>(null);
   const [bestScore, setBestScore] = useState<number | null>(null);
 
   useGameMessages(iframeRef, (message) => {
@@ -52,9 +53,10 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
         setStatus("playing");
         break;
       case "gameOver": {
-        const { score } = message.payload;
+        const { score, wave } = message.payload;
         setStatus("over");
         setLastScore(score);
+        setLastWave(wave ?? null);
         setBestScore((best) => (best === null ? score : Math.max(best, score)));
         break;
       }
@@ -134,6 +136,11 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
           {lastScore !== null && (
             <span>
               점수 <strong className="font-semibold tabular-nums">{lastScore.toLocaleString()}</strong>
+            </span>
+          )}
+          {lastWave !== null && (
+            <span className="text-zinc-600 dark:text-zinc-400">
+              웨이브 <strong className="font-semibold tabular-nums">{lastWave}</strong>
             </span>
           )}
           {bestScore !== null && (

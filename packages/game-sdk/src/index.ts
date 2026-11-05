@@ -4,7 +4,7 @@
  *   import { ready, gameStart, gameOver } from "@envertree/game-sdk";
  *   ready();                    // 로딩 끝
  *   gameStart();                // 한 판 시작
- *   gameOver({ score: 120 });   // 한 판 끝
+ *   gameOver({ score: 120 });   // 한 판 끝 (웨이브가 있는 게임은 { score, wave })
  *
  * 포털 밖에서 단독 실행(pnpm dev)하면 부모 창이 없으므로 콘솔에만 기록한다.
  */
@@ -27,15 +27,12 @@ export function gameStart(): void {
   send({ source: MESSAGE_SOURCE, version: PROTOCOL_VERSION, type: "gameStart" });
 }
 
-/** 한 판이 끝났을 때 최종 점수와 함께 호출 */
+/** 한 판이 끝났을 때 최종 점수(와 선택적으로 도달 웨이브)와 함께 호출 */
 export function gameOver(result: GameOverMessage["payload"]): void {
   const score = Math.max(0, Math.floor(result.score));
-  send({
-    source: MESSAGE_SOURCE,
-    version: PROTOCOL_VERSION,
-    type: "gameOver",
-    payload: { score },
-  });
+  const payload: GameOverMessage["payload"] = { score };
+  if (result.wave !== undefined) payload.wave = Math.max(1, Math.floor(result.wave));
+  send({ source: MESSAGE_SOURCE, version: PROTOCOL_VERSION, type: "gameOver", payload });
 }
 
 /** 포털 안(iframe)에서 실행 중인지 */

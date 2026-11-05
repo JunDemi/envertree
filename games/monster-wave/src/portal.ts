@@ -17,10 +17,7 @@ export function notifyGameStart() {
   gameStart();
 }
 
-/**
- * 한 판 종료. wave는 Phase 5에서 SDK 메시지 규약에 추가할 예정이라
- * 지금은 받기만 하고 score만 보낸다.
- */
+/** 한 판 종료: 최종 점수와 도달 웨이브 */
 export function notifyGameOver(result: { score: number; wave: number }) {
-  gameOver({ score: result.score });
+  gameOver({ score: result.score, wave: result.wave });
 }

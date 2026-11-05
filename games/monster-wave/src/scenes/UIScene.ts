@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { controls, debugState, gameConfig, playerConfig } from "../config";
+import { sfx } from "../audio/Sfx";
 import { GameEvents } from "../events";
+import { DISARM_FIRE_EVENT } from "../input/KeyboardMouseInput";
 import type { GameScene } from "./GameScene";
 import { textStyle } from "../ui/text";
 import { SCENES } from "./keys";
@@ -39,6 +41,9 @@ export class UIScene extends Phaser.Scene {
   private comboMult!: Phaser.GameObjects.Text;
   private comboFill!: Phaser.GameObjects.Rectangle;
   private notice!: Phaser.GameObjects.Text;
+  private hurtFlash!: Phaser.GameObjects.Graphics;
+  private muteText!: Phaser.GameObjects.Text;
+  private lastHp: number = playerConfig.maxHp;
   private subNotice!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -48,6 +53,16 @@ export class UIScene extends Phaser.Scene {
   create() {
     const { width, height } = gameConfig;
     this.paused = false;
+
+    // 피격 시 화면 가장자리 빨간 깜빡임 (가운데는 비워 시야를 가리지 않음)
+    this.hurtFlash = this.add.graphics().setAlpha(0);
+    const edge = 70;
+    for (let i = 0; i < 6; i++) {
+      const a = 0.16 * (1 - i / 6);
+      const inset = (i * edge) / 6;
+      this.hurtFlash.lineStyle(edge / 6, 0xef4444, a).strokeRect(inset, inset, width - inset * 2, height - inset * 2);
+    }
+    this.lastHp = playerConfig.maxHp;
 
     // 체력 게이지
     this.add.rectangle(HP_BAR.x - 2, HP_BAR.y - 2, HP_BAR.w + 4, HP_BAR.h + 4, 0x0b0d12, 0.85).setOrigin(0);
@@ -76,6 +91,19 @@ export class UIScene extends Phaser.Scene {
 
     // 무기 슬롯 (아래 가운데)
     this.createSlots();
+
+    // 음소거 토글 (오른쪽 아래, 클릭 또는 M 키)
+    this.muteText = this.add
+      .text(width - 12, height - 12, "", textStyle(13, "#94a3b8", true))
+      .setOrigin(1, 1)
+      .setInteractive({ useHandCursor: true });
+    this.muteText.on("pointerdown", (_p: unknown, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+      e.stopPropagation();
+      this.gameScene.events.emit(DISARM_FIRE_EVENT);
+      this.toggleMute();
+    });
+    this.input.keyboard?.on("keydown-M", () => this.toggleMute());
+    this.updateMuteText();
 
     // 새 무기 알림 (가운데 아래쪽)
     this.notice = this.add.text(width / 2, height * 0.62, "", textStyle(34, "#67e8f9", true)).setOrigin(0.5).setAlpha(0);
@@ -215,7 +243,22 @@ export class UIScene extends Phaser.Scene {
     this.tweens.add({ targets: [this.notice, this.subNotice], alpha: 0, delay: 2000, duration: 400 });
   }
 
+  private toggleMute() {
+    sfx.toggleMute();
+    this.updateMuteText();
+  }
+
+  private updateMuteText() {
+    this.muteText.setText(sfx.muted ? "소리 꺼짐 (M)" : "소리 켜짐 (M)");
+  }
+
   private setHp(hp: number, max: number) {
+    if (hp < this.lastHp) {
+      this.tweens.killTweensOf(this.hurtFlash);
+      this.hurtFlash.setAlpha(1);
+      this.tweens.add({ targets: this.hurtFlash, alpha: 0, duration: 380, ease: "Quad.out" });
+    }
+    this.lastHp = hp;
     const ratio = Phaser.Math.Clamp(hp / max, 0, 1);
     this.hpFill.width = HP_BAR.w * ratio;
     this.hpFill.fillColor = ratio > 0.5 ? 0x22c55e : ratio > 0.25 ? 0xf59e0b : 0xef4444;

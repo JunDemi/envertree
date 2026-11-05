@@ -76,7 +76,7 @@ pnpm --filter space-dodge dev   # http://localhost:5173 에서 단독 실행
   import { ready, gameStart, gameOver } from "@envertree/game-sdk";
   ready();                   // 로딩이 끝났을 때 한 번
   gameStart();               // 한 판 시작할 때
-  gameOver({ score: 120 });  // 한 판 끝났을 때
+  gameOver({ score: 120 });  // 한 판 끝났을 때 (웨이브가 있으면 { score, wave })
   ```
 
   단독 실행 중에는 부모 창이 없으므로 콘솔에 기록만 된다.
@@ -122,14 +122,14 @@ pnpm dev
 ```ts
 { source: "game-portal", version: 1, type: "ready" }
 { source: "game-portal", version: 1, type: "gameStart" }
-{ source: "game-portal", version: 1, type: "gameOver", payload: { score: number } }
+{ source: "game-portal", version: 1, type: "gameOver", payload: { score: number, wave?: number } }
 ```
 
 포털([`use-game-messages.ts`](apps/portal/src/lib/use-game-messages.ts))은 다음을 모두 확인한 메시지만 처리한다.
 
 1. **origin**: 포털과 같은 출처
 2. **source**: 이 페이지의 게임 iframe이 보낸 것
-3. **형식**: `source`, `version`, `type`, `payload`가 규약과 일치 (점수는 0 이상의 유한한 숫자)
+3. **형식**: `source`, `version`, `type`, `payload`가 규약과 일치 (점수는 0 이상의 유한한 숫자, `wave`는 있으면 1 이상의 정수)
 
 빌드 도구 없이 HTML 하나로 만든 게임도 같은 형식으로 직접 보내면 된다
 (예: [`apps/portal/public/play/dummy/index.html`](apps/portal/public/play/dummy/index.html)).

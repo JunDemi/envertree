@@ -19,6 +19,8 @@ import {
   type ThrownWeapon,
 } from "../config";
 import { TEX } from "../assets/keys";
+import { sfx } from "../audio/Sfx";
+import { DamageNumbers } from "../effects/DamageNumbers";
 import { Bullets, type Bullet } from "../combat/Bullets";
 import { Grenades } from "../combat/Grenades";
 import { WeaponController } from "../combat/WeaponController";
@@ -62,6 +64,8 @@ export class GameScene extends Phaser.Scene {
   private grenades!: Grenades;
   private items!: Items;
   private effects!: Effects;
+  private damageNumbers!: DamageNumbers;
+  private kills = 0;
   private input1!: InputSource;
   /** 이번 프레임 입력 (수류탄 조준점 등에 사용) */
   private lastInput!: PlayerInput;
@@ -83,6 +87,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.score = 0;
+    this.kills = 0;
     this.flowTimer = 0;
     this.flowCol = -1;
     this.flowRow = -1;
@@ -103,6 +108,7 @@ export class GameScene extends Phaser.Scene {
       if (p) this.placeables.damage(p, m.def.contactDamage);
     };
     this.effects = new Effects(this);
+    this.damageNumbers = new DamageNumbers(this);
     this.items = new Items(this);
     this.combo = new Combo();
 
@@ -125,15 +131,25 @@ export class GameScene extends Phaser.Scene {
       place: (def) => this.place(def),
       throwGrenade: (def) => this.throwGrenade(def),
       fireRocket: (def) => this.fireRocket(def),
+      onFired: (def) => sfx.play(def.id),
       onChanged: () => this.events.emit(GameEvents.weapons),
-      onUnlocked: (def, slot) => this.events.emit(GameEvents.unlock, def.name, slot),
+      onUnlocked: (def, slot) => {
+        sfx.play("unlock");
+        this.events.emit(GameEvents.unlock, def.name, slot);
+      },
     });
 
     this.waves = new WaveManager({
       spawn: (id, hpScale, speedScale) => this.spawnMonster(id, hpScale, speedScale),
       aliveCount: () => this.monsters.alive.length,
-      onWaveStart: (wave) => this.events.emit(GameEvents.waveStart, wave),
-      onWaveClear: (wave) => this.events.emit(GameEvents.waveClear, wave),
+      onWaveStart: (wave) => {
+        sfx.play("waveStart");
+        this.events.emit(GameEvents.waveStart, wave);
+      },
+      onWaveClear: (wave) => {
+        sfx.play("waveClear");
+        this.events.emit(GameEvents.waveClear, wave);
+      },
     });
 
     const start = grid.tileCenter(arenaConfig.playerStart.col, arenaConfig.playerStart.row);
@@ -197,6 +213,7 @@ export class GameScene extends Phaser.Scene {
     this.fireballs.update(dt, (b) => this.fireballStep(b, now));
     this.rockets.update(dt, (b) => this.rocketStep(b));
     this.grenades.update();
+    this.damageNumbers.update();
     this.items.update(this.player.x, this.player.y, (type, x, y) => this.pickup(type, x, y));
     this.checkContactDamage();
     if (this.combo.update(now)) this.events.emit(GameEvents.combo, 0, 1);
@@ -360,7 +377,7 @@ export class GameScene extends Phaser.Scene {
     if (!target) return true;
     const speed = Math.hypot(b.vx, b.vy) || 1;
     target.knockback(b.vx / speed, b.vy / speed, b.knockback);
-    if (target.damage(b.damage, now)) this.killMonster(target);
+    this.damageMonster(target, b.damage, now);
     return false;
   }
 
@@ -386,6 +403,7 @@ export class GameScene extends Phaser.Scene {
     const sx = m.x;
     const sy = m.y - m.def.footprint.d / 2;
     const c = this.playerCenter();
+    sfx.play("fireball");
     this.fireballs.fire({
       x: sx,
       y: sy,
@@ -422,7 +440,7 @@ export class GameScene extends Phaser.Scene {
     if (friendlyFire) {
       const target = this.monsters.hitTest(b.x, b.y, b.owner);
       if (target) {
-        if (target.damage(b.damage, now)) this.killMonster(target);
+        this.damageMonster(target, b.damage, now, "#fdba74");
         return false;
       }
     }
@@ -441,7 +459,8 @@ export class GameScene extends Phaser.Scene {
     const falloff = (dist: number) => 1 - (1 - combatConfig.explosionEdgeDamage) * Phaser.Math.Clamp(dist / r, 0, 1);
 
     this.effects.explosion(x, y, r);
-    this.cameras.main.shake(180, 0.012);
+    this.cameras.main.shake(200, 0.014);
+    sfx.play("explosion");
 
     // 몬스터: 대상 목록을 먼저 모은 뒤 처리 (처리 중 처치로 목록이 바뀌므로)
     this.blastTargets.length = 0;
@@ -455,7 +474,7 @@ export class GameScene extends Phaser.Scene {
       const cy = m.y - m.def.footprint.d / 2 - y;
       const dist = Math.hypot(cx, cy);
       m.knockback(cx / (dist || 1), cy / (dist || 1), combatConfig.explosionKnockback);
-      if (m.damage(ex.damage * falloff(dist), now)) this.killMonster(m);
+      this.damageMonster(m, ex.damage * falloff(dist), now, "#fde047");
     }
 
     // 플레이어 자기 피해
@@ -481,12 +500,20 @@ export class GameScene extends Phaser.Scene {
 
   // ───────────────────────── 피해, 처치, 아이템 ─────────────────────────
 
+  /** 몬스터 피해 공통 처리: 피해 숫자, 효과음, 처치 */
+  private damageMonster(m: Monster, amount: number, now: number, color = "#ffffff") {
+    this.damageNumbers.show(m, m.x, m.y - m.def.height - m.def.footprint.d, amount, color);
+    if (m.damage(amount, now)) this.killMonster(m);
+    else sfx.play("hit");
+  }
+
   /** 플레이어 피해 공통 처리 (무적이면 무시). 넉백 방향 (dirX, dirY) */
   private hurtPlayer(amount: number, dirX: number, dirY: number, knockback: number) {
     const p = this.player;
     if (!p.takeDamage(Math.round(amount))) return;
     if (!p.dead && knockback > 0) p.knockback(dirX, dirY, knockback);
-    this.cameras.main.shake(120, 0.006);
+    this.cameras.main.shake(140, 0.008);
+    sfx.play("hurt");
     this.events.emit(GameEvents.hp, p.hp, playerConfig.maxHp);
     if (p.dead) this.onPlayerDead();
   }
@@ -523,6 +550,8 @@ export class GameScene extends Phaser.Scene {
     this.effects.burst(x, y - def.height / 2, def.color);
     this.monsters.kill(m);
 
+    this.kills += 1;
+    sfx.play("kill");
     const combo = this.combo.registerKill(this.time.now);
     this.score += Math.round(def.score * this.combo.multiplier);
     this.events.emit(GameEvents.score, this.score);
@@ -543,9 +572,11 @@ export class GameScene extends Phaser.Scene {
       p.hp = Math.min(playerConfig.maxHp, p.hp + combatConfig.drops.healAmount);
       this.events.emit(GameEvents.hp, p.hp, playerConfig.maxHp);
       this.effects.floatText(x, y - 20, `+${combatConfig.drops.healAmount} HP`, "#86efac");
+      sfx.play("pickup");
     } else {
       this.weapon.addAmmoAll();
       this.effects.floatText(x, y - 20, "탄약 +", "#fde047");
+      sfx.play("pickup");
     }
     return true;
   }
@@ -585,6 +616,7 @@ export class GameScene extends Phaser.Scene {
       score: this.score,
       wave: Math.max(1, this.waves.wave),
       bestCombo: this.combo.best,
+      kills: this.kills,
     });
   }
 

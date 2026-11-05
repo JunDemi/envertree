@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { sfx } from "./audio/Sfx";
 import { debugState, gameConfig } from "./config";
 import { BootScene } from "./scenes/BootScene";
 import { GameOverScene } from "./scenes/GameOverScene";
@@ -29,6 +30,9 @@ const game = new Phaser.Game({
   // 첫 번째 씬이 먼저 실행된다
   scene: [BootScene, TitleScene, GameScene, UIScene, GameOverScene],
 });
+
+// 효과음 (Phaser 사운드 매니저의 Web Audio 사용, 음소거 설정 불러오기)
+sfx.init(game);
 
 // 디버그 모드에서만: 브라우저 콘솔/자동 테스트에서 게임 상태를 볼 수 있게 노출
 if (debugState.enabled) {

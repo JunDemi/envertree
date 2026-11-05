@@ -2,6 +2,9 @@ import Phaser from "phaser";
 import { controls, type KeyName } from "../config";
 import type { InputSource, PlayerInput } from "./types";
 
+/** 게임 씬에 이 이벤트를 보내면, 마우스 버튼을 한 번 뗄 때까지 사격하지 않는다 */
+export const DISARM_FIRE_EVENT = "input-disarm-fire";
+
 /**
  * 키보드(이동, 무기 교체) + 마우스(조준, 사격, 휠) 입력.
  * 키 매핑은 config/controls.ts에서 가져온다.
@@ -54,6 +57,8 @@ export class KeyboardMouseInput implements InputSource {
     scene.input.on("wheel", this.onWheel);
     // 일시정지에서 돌아올 때(클릭으로 재개할 수 있음)도 다시 버튼을 떼야 사격
     scene.events.on(Phaser.Scenes.Events.RESUME, this.disarmFire);
+    // HUD 버튼(소리 켜기/끄기 등)을 클릭했을 때도 그 클릭으로 사격하지 않게
+    scene.events.on(DISARM_FIRE_EVENT, this.disarmFire);
   }
 
   read(): PlayerInput {
@@ -95,5 +100,6 @@ export class KeyboardMouseInput implements InputSource {
     this.scene.input.off("wheel", this.onWheel);
     for (const key of this.allKeys) key.removeAllListeners();
     this.scene.events.off(Phaser.Scenes.Events.RESUME, this.disarmFire);
+    this.scene.events.off(DISARM_FIRE_EVENT, this.disarmFire);
   }
 }

@@ -26,6 +26,8 @@ export interface WeaponHandlers {
   place(def: PlaceableWeapon): boolean;
   throwGrenade(def: ThrownWeapon): boolean;
   fireRocket(def: RocketWeapon): void;
+  /** 무기를 실제로 사용함 (효과음 등) */
+  onFired(def: WeaponDef): void;
   /** 무기 목록/탄약/선택이 바뀜 (HUD 갱신용) */
   onChanged(): void;
   /** 새 무기 해금 */
@@ -93,6 +95,7 @@ export class WeaponController {
       return;
     }
     st.nextFireAt = now + def.fireIntervalMs;
+    this.h.onFired(def);
     if (st.ammo !== null) {
       st.ammo -= 1;
       // 탄약이 떨어지면 권총(1번)으로 자동 전환
