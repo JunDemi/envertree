@@ -6,7 +6,7 @@
  *  2. 아래 `games` 배열에 항목 하나를 추가한다
  *  3. 썸네일을 public/thumbnails/ 에 넣는다
  *
- * 빌드된 게임은 /play/<slug>/index.html 에서 서비스된다.
+ * 빌드된 게임은 /play/<slug>/index.html 에서 서비스된다 (getPlayUrl).
  */
 
 /** 사용할 수 있는 태그 목록. 키는 URL에 쓰이고, 값은 화면에 보이는 이름이다. */
@@ -95,4 +95,24 @@ export function getUsedTags(): GameTag[] {
 
 export function isGameTag(value: string): value is GameTag {
   return Object.hasOwn(GAME_TAGS, value);
+}
+
+/** 플레이 페이지의 iframe이 불러올 주소 */
+export function getPlayUrl(slug: string): string {
+  return `/play/${slug}/index.html`;
+}
+
+/** 추천 게임: 태그가 많이 겹치는 순 → 최신순 */
+export function getRelatedGames(slug: string, limit = 4): Game[] {
+  const current = getGameBySlug(slug);
+  if (!current) return [];
+  return getAllGames()
+    .filter((game) => game.slug !== slug)
+    .map((game) => ({
+      game,
+      shared: game.tags.filter((tag) => current.tags.includes(tag)).length,
+    }))
+    .sort((a, b) => b.shared - a.shared)
+    .slice(0, limit)
+    .map(({ game }) => game);
 }

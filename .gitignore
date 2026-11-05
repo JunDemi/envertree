@@ -7,7 +7,9 @@ dist/
 out/
 
 # 빌드된 게임 (scripts/build-games.ts가 생성)
-apps/portal/public/play/
+# 단, dummy는 직접 작성한 동작 확인용 정적 게임이라 커밋한다.
+apps/portal/public/play/*
+!apps/portal/public/play/dummy/
 
 # env files — 이름만 담은 .env.example은 커밋
 .env*

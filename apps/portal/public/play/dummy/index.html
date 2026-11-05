@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>클릭 챌린지</title>
+  <!--
+    동작 확인용 정적 HTML 게임. 빌드 과정 없이 이 파일 하나로 동작한다.
+    포털은 이 파일을 /play/dummy/index.html 로 iframe에 띄운다.
+  -->
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3vmin; font-family: system-ui, "Apple SD Gothic Neo", sans-serif;
+      background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff;
+      user-select: none; -webkit-user-select: none; touch-action: manipulation; cursor: pointer;
+    }
+    h1 { font-size: 8vmin; }
+    .big { font-size: 18vmin; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+    .sub { font-size: 4vmin; opacity: .85; }
+    button {
+      font: inherit; font-size: 5vmin; font-weight: 700; padding: 2vmin 6vmin;
+      border: 0; border-radius: 999px; background: #fff; color: #ef4444; cursor: pointer;
+    }
+    .pop { animation: pop .12s ease-out; }
+    @keyframes pop { from { transform: scale(1.15); } to { transform: scale(1); } }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <section id="ready">
+    <h1>클릭 챌린지</h1>
+  </section>
+  <p id="readyText" class="sub">10초 동안 최대한 많이 클릭하세요!</p>
+  <button id="start">시작</button>
+
+  <div id="playing" hidden style="text-align:center">
+    <div id="score" class="big">0</div>
+    <p id="timer" class="sub">10.0초</p>
+  </div>
+
+  <div id="result" hidden style="text-align:center">
+    <p class="sub">최종 점수</p>
+    <div id="final" class="big">0</div>
+  </div>
+
+  <script>
+    const DURATION = 10_000;
+    const $ = (id) => document.getElementById(id);
+    let state = "ready"; // ready | playing | over
+    let score = 0;
+    let endAt = 0;
+
+    function show(name) {
+      $("ready").hidden = $("readyText").hidden = name !== "ready";
+      $("playing").hidden = name !== "playing";
+      $("result").hidden = name !== "over";
+      $("start").hidden = name === "playing";
+      $("start").textContent = name === "over" ? "다시 하기" : "시작";
+    }
+
+    function start() {
+      state = "playing";
+      score = 0;
+      endAt = performance.now() + DURATION;
+      $("score").textContent = "0";
+      show("playing");
+      requestAnimationFrame(tick);
+    }
+
+    function tick(now) {
+      if (state !== "playing") return;
+      const left = Math.max(0, endAt - now);
+      $("timer").textContent = (left / 1000).toFixed(1) + "초";
+      if (left === 0) return finish();
+      requestAnimationFrame(tick);
+    }
+
+    function finish() {
+      state = "over";
+      $("final").textContent = score;
+      show("over");
+      // Phase 4에서 game-sdk의 gameOver({ score })로 포털에 점수를 보낼 예정
+    }
+
+    $("start").addEventListener("click", (e) => {
+      e.stopPropagation();
+      start();
+    });
+
+    document.addEventListener("pointerdown", () => {
+      if (state !== "playing") return;
+      score += 1;
+      const el = $("score");
+      el.textContent = score;
+      el.classList.remove("pop");
+      void el.offsetWidth; // 애니메이션 재시작
+      el.classList.add("pop");
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && state !== "playing") {
+        e.preventDefault();
+        start();
+      }
+    });
+
+    show("ready");
+  </script>
+</body>
+</html>
