@@ -29,7 +29,7 @@ export class Arena {
     // 벽 그림
     for (let r = 0; r < grid.rows; r++) {
       for (let c = 0; c < grid.cols; c++) {
-        if (!grid.isBlocked(c, r)) continue;
+        if (!grid.isWall(c, r)) continue;
         const bottom = (r + 1) * t;
         this.wallImages[r * grid.cols + c] = scene.add
           .image(c * t + t / 2, bottom, TEX.wall)

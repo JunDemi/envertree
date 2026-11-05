@@ -1,10 +1,20 @@
 import Phaser from "phaser";
 import { controls, debugState, gameConfig, playerConfig } from "../config";
 import { GameEvents } from "../events";
+import type { GameScene } from "./GameScene";
 import { textStyle } from "../ui/text";
 import { SCENES } from "./keys";
 
 const HP_BAR = { x: 16, y: 16, w: 200, h: 16 };
+const SLOT = { w: 92, h: 46, gap: 6, bottom: 12 };
+const COMBO_BAR = { w: 150, h: 6 };
+
+interface SlotView {
+  bg: Phaser.GameObjects.Rectangle;
+  num: Phaser.GameObjects.Text;
+  name: Phaser.GameObjects.Text;
+  ammo: Phaser.GameObjects.Text;
+}
 
 /**
  * HUD + 일시정지. GameScene 위에 겹쳐 실행되며 카메라 이동의 영향을 받지 않는다.
@@ -22,6 +32,14 @@ export class UIScene extends Phaser.Scene {
   private banner!: Phaser.GameObjects.Text;
   private subBanner!: Phaser.GameObjects.Text;
   private fpsText?: Phaser.GameObjects.Text;
+  private gameScene!: GameScene;
+  private slots: SlotView[] = [];
+  private comboLayer!: Phaser.GameObjects.Container;
+  private comboText!: Phaser.GameObjects.Text;
+  private comboMult!: Phaser.GameObjects.Text;
+  private comboFill!: Phaser.GameObjects.Rectangle;
+  private notice!: Phaser.GameObjects.Text;
+  private subNotice!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SCENES.ui);
@@ -44,26 +62,41 @@ export class UIScene extends Phaser.Scene {
     this.subBanner = this.add.text(width / 2, height * 0.3 + 50, "", textStyle(20, "#e2e8f0")).setOrigin(0.5).setAlpha(0);
     this.scoreText = this.add.text(width - 16, 12, "", textStyle(20, "#ffffff", true)).setOrigin(1, 0);
     this.monstersText = this.add.text(width - 16, 40, "", textStyle(15, "#cbd5e1")).setOrigin(1, 0);
-    this.add
-      .text(width / 2, height - 16, "WASD 이동 · 마우스 조준 · 클릭 사격 · ESC/P 일시정지", textStyle(14, "#94a3b8"))
-      .setOrigin(0.5, 1);
     if (debugState.enabled) {
-      this.add.text(16, height - 16, "DEBUG  K: 그런트 +50  N: 웨이브 건너뛰기", textStyle(14, "#f472b6", true)).setOrigin(0, 1);
+      this.add.text(16, 64, "DEBUG  K 그런트+50 · N 웨이브 건너뛰기 · U 전 무기", textStyle(13, "#f472b6", true));
       this.fpsText = this.add.text(16, 40, "", textStyle(14, "#f472b6"));
     }
+
+    // 콤보 (오른쪽, 점수 아래). 콤보가 0이면 숨김
+    this.comboText = this.add.text(0, 0, "", textStyle(30, "#fb923c", true)).setOrigin(1, 0);
+    this.comboMult = this.add.text(0, 36, "", textStyle(16, "#fde68a", true)).setOrigin(1, 0);
+    const comboBg = this.add.rectangle(-COMBO_BAR.w, 60, COMBO_BAR.w, COMBO_BAR.h, 0x0b0d12, 0.85).setOrigin(0);
+    this.comboFill = this.add.rectangle(-COMBO_BAR.w, 60, COMBO_BAR.w, COMBO_BAR.h, 0xfb923c).setOrigin(0);
+    this.comboLayer = this.add.container(width - 16, 66, [this.comboText, this.comboMult, comboBg, this.comboFill]).setVisible(false);
+
+    // 무기 슬롯 (아래 가운데)
+    this.createSlots();
+
+    // 새 무기 알림 (가운데 아래쪽)
+    this.notice = this.add.text(width / 2, height * 0.62, "", textStyle(34, "#67e8f9", true)).setOrigin(0.5).setAlpha(0);
+    this.subNotice = this.add.text(width / 2, height * 0.62 + 40, "", textStyle(18, "#e2e8f0")).setOrigin(0.5).setAlpha(0);
     this.setHp(playerConfig.maxHp, playerConfig.maxHp);
     this.setScore(0);
     this.setMonsters(0);
     this.setWave(0);
 
     // GameScene 이벤트 구독
-    const game = this.scene.get(SCENES.game);
+    const game = this.scene.get(SCENES.game) as GameScene;
+    this.gameScene = game;
     game.events.on(GameEvents.hp, this.setHp, this);
     game.events.on(GameEvents.score, this.setScore, this);
     game.events.on(GameEvents.monsters, this.setMonsters, this);
     game.events.on(GameEvents.waveStart, this.onWaveStart, this);
     game.events.on(GameEvents.waveClear, this.onWaveClear, this);
     game.events.on(GameEvents.countdown, this.onCountdown, this);
+    game.events.on(GameEvents.combo, this.onCombo, this);
+    game.events.on(GameEvents.weapons, this.refreshSlots, this);
+    game.events.on(GameEvents.unlock, this.onUnlock, this);
 
     // 일시정지 화면
     this.pauseLayer = this.add
@@ -72,6 +105,14 @@ export class UIScene extends Phaser.Scene {
         this.add.text(width / 2, height / 2 - 40, "일시정지", textStyle(48, "#ffffff", true)).setOrigin(0.5),
         this.add.text(width / 2, height / 2 + 20, "ESC / P 또는 클릭으로 계속", textStyle(20, "#cbd5e1")).setOrigin(0.5),
         this.add.text(width / 2, height / 2 + 60, "T: 타이틀로", textStyle(16, "#94a3b8")).setOrigin(0.5),
+        this.add
+          .text(
+            width / 2,
+            height / 2 + 120,
+            "WASD 이동 · 마우스 조준 · 클릭 사격 · 1~9 / 휠 / Q·E 무기 교체",
+            textStyle(15, "#94a3b8"),
+          )
+          .setOrigin(0.5),
       ])
       .setVisible(false);
 
@@ -94,11 +135,84 @@ export class UIScene extends Phaser.Scene {
       game.events.off(GameEvents.waveStart, this.onWaveStart, this);
       game.events.off(GameEvents.waveClear, this.onWaveClear, this);
       game.events.off(GameEvents.countdown, this.onCountdown, this);
+      game.events.off(GameEvents.combo, this.onCombo, this);
+      game.events.off(GameEvents.weapons, this.refreshSlots, this);
+      game.events.off(GameEvents.unlock, this.onUnlock, this);
     });
   }
 
   update() {
     this.fpsText?.setText(`FPS ${Math.round(this.game.loop.actualFps)}`);
+    // 콤보 남은 시간 게이지는 매 프레임 직접 읽는다
+    const combo = this.gameScene.combo;
+    if (combo && combo.count > 0) this.comboFill.width = COMBO_BAR.w * combo.remainingRatio(this.gameScene.time.now);
+  }
+
+  private createSlots() {
+    const { width, height } = gameConfig;
+    const n = this.gameScene ? this.gameScene.weapon.states.length : 7;
+    const total = n * SLOT.w + (n - 1) * SLOT.gap;
+    const x0 = (width - total) / 2;
+    const y = height - SLOT.bottom - SLOT.h;
+    this.slots = [];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * (SLOT.w + SLOT.gap);
+      this.slots.push({
+        bg: this.add.rectangle(x, y, SLOT.w, SLOT.h, 0x0b0d12, 0.75).setOrigin(0).setStrokeStyle(2, 0x334155),
+        num: this.add.text(x + 5, y + 3, String(i + 1), textStyle(11, "#94a3b8", true)),
+        name: this.add.text(x + SLOT.w / 2, y + 17, "", textStyle(13, "#ffffff", true)).setOrigin(0.5),
+        ammo: this.add.text(x + SLOT.w / 2, y + 35, "", textStyle(12, "#cbd5e1")).setOrigin(0.5),
+      });
+    }
+  }
+
+  /** 무기 슬롯 다시 그리기: 잠김(해금 콤보 표시) / 선택됨(노란 테두리) / 탄약 */
+  private refreshSlots() {
+    const w = this.gameScene?.weapon;
+    if (!w) return;
+    if (this.slots.length !== w.states.length) {
+      for (const s of this.slots) [s.bg, s.num, s.name, s.ammo].forEach((o) => o.destroy());
+      this.createSlots();
+    }
+    w.states.forEach((st, i) => {
+      const v = this.slots[i];
+      const selected = i === w.currentIndex;
+      const empty = st.ammo !== null && st.ammo <= 0;
+      if (!st.unlocked) {
+        v.bg.setFillStyle(0x0b0d12, 0.45).setStrokeStyle(2, 0x1e293b);
+        v.name.setText("잠김").setColor("#475569");
+        v.ammo.setText(`콤보 ${st.def.unlockCombo}`).setColor("#64748b");
+        v.num.setColor("#475569");
+        return;
+      }
+      v.bg.setFillStyle(selected ? 0x1e293b : 0x0b0d12, 0.85).setStrokeStyle(selected ? 3 : 2, selected ? 0xfacc15 : 0x334155);
+      v.num.setColor(selected ? "#facc15" : "#94a3b8");
+      v.name.setText(st.def.name).setColor(empty ? "#64748b" : "#ffffff");
+      v.ammo.setText(st.ammo === null ? "∞" : String(st.ammo)).setColor(empty ? "#f87171" : "#cbd5e1");
+    });
+  }
+
+  private onCombo(combo: number, multiplier: number) {
+    if (combo <= 0) {
+      this.comboLayer.setVisible(false);
+      return;
+    }
+    this.comboLayer.setVisible(true);
+    this.comboText.setText(`${combo} COMBO`);
+    this.comboMult.setText(multiplier > 1 ? `점수 ×${multiplier}` : "");
+    this.comboFill.width = COMBO_BAR.w;
+    // 콤보가 오를 때마다 살짝 튀게
+    this.tweens.killTweensOf(this.comboText);
+    this.comboText.setScale(1.25);
+    this.tweens.add({ targets: this.comboText, scale: 1, duration: 140, ease: "Quad.out" });
+  }
+
+  private onUnlock(name: string, slot: number) {
+    this.tweens.killTweensOf([this.notice, this.subNotice]);
+    this.notice.setText(`NEW WEAPON: ${name}!`).setAlpha(1).setScale(0.6);
+    this.subNotice.setText(`${slot}번 키로 선택`).setAlpha(1);
+    this.tweens.add({ targets: this.notice, scale: 1, duration: 260, ease: "Back.out" });
+    this.tweens.add({ targets: [this.notice, this.subNotice], alpha: 0, delay: 2000, duration: 400 });
   }
 
   private setHp(hp: number, max: number) {

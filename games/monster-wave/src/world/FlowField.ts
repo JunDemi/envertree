@@ -15,7 +15,10 @@ const NEIGHBORS: [number, number, number][] = [
  * 몬스터 수와 상관없이 비용이 일정하다.
  *
  * - 대각선 이동은 양옆 두 칸이 모두 비어 있을 때만 허용 (벽 모서리를 파고들지 않게)
- * - 막힌 칸(벽, 바리케이드)은 지나갈 수 없다. 바리케이드가 생기거나 부서지면 다시 계산한다.
+ * - 벽은 지나갈 수 없다.
+ * - 설치물(바리케이드, 드럼통) 칸은 지나갈 수 있지만 비용이 크다(obstacleCost). 그래서 몬스터는
+ *   돌아갈 길이 있으면 돌아가고, 너무 멀거나 완전히 막혀 있으면 설치물 쪽으로 와서 부순다.
+ *   설치물이 생기거나 없어지면 다시 계산한다.
  */
 export class FlowField {
   private readonly grid: Grid;
@@ -24,8 +27,12 @@ export class FlowField {
   readonly dirY: Float32Array;
   private heap: number[] = [];
 
-  constructor(grid: Grid) {
+  private readonly obstacleCost: number;
+
+  /** obstacleCost: 설치물 칸에 들어갈 때 추가 비용 (직선 1칸 = 10) */
+  constructor(grid: Grid, obstacleCost: number) {
     this.grid = grid;
+    this.obstacleCost = obstacleCost;
     const n = grid.cols * grid.rows;
     this.dist = new Int32Array(n);
     this.dirX = new Float32Array(n);
@@ -39,7 +46,7 @@ export class FlowField {
     dist.fill(UNREACHABLE);
     this.heap.length = 0;
 
-    if (grid.isBlocked(targetCol, targetRow)) return;
+    if (grid.isWall(targetCol, targetRow)) return;
     const start = targetRow * cols + targetCol;
     dist[start] = 0;
     this.push(start, 0);
@@ -52,10 +59,11 @@ export class FlowField {
       for (const [dc, dr, cost] of NEIGHBORS) {
         const nc = c + dc;
         const nr = r + dr;
-        if (grid.isBlocked(nc, nr)) continue;
+        if (grid.isWall(nc, nr)) continue;
+        // 대각선은 양옆이 모두 비어 있어야 (벽이든 설치물이든 모서리 사이로 빠져나가지 않게)
         if (dc !== 0 && dr !== 0 && (grid.isBlocked(c + dc, r) || grid.isBlocked(c, r + dr))) continue;
         const ni = nr * cols + nc;
-        const nd = d + cost;
+        const nd = d + cost + (grid.isObstacle(nc, nr) ? this.obstacleCost : 0);
         if (nd < dist[ni]) {
           dist[ni] = nd;
           this.push(ni, nd);
@@ -76,7 +84,7 @@ export class FlowField {
         for (const [dc, dr] of NEIGHBORS) {
           const nc = c + dc;
           const nr = r + dr;
-          if (grid.isBlocked(nc, nr)) continue;
+          if (grid.isWall(nc, nr)) continue;
           if (dc !== 0 && dr !== 0 && (grid.isBlocked(c + dc, r) || grid.isBlocked(c, r + dr))) continue;
           const nd = dist[nr * cols + nc];
           if (nd < best) {

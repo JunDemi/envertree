@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import type { Explosion } from "../config";
 import type { Monster } from "../entities/Monster";
 
 /** 날아가는 투사체 하나 (풀에서 재사용) */
@@ -15,6 +16,8 @@ export interface Bullet {
   knockback: number;
   /** 쏜 몬스터 (몬스터 투사체일 때). 자기 자신은 맞지 않는다 */
   owner: Monster | null;
+  /** 부딪히면 터지는 투사체(로켓)의 폭발 정보 */
+  explosion: Explosion | null;
   image: Phaser.GameObjects.Image;
 }
 
@@ -27,6 +30,7 @@ export interface FireOptions {
   damage: number;
   knockback?: number;
   owner?: Monster | null;
+  explosion?: Explosion | null;
 }
 
 /**
@@ -52,7 +56,7 @@ export class Bullets {
     let b = this.items.find((it) => !it.active);
     if (!b) {
       b = {
-        active: false, x: 0, y: 0, vx: 0, vy: 0, range: 0, damage: 0, knockback: 0, owner: null,
+        active: false, x: 0, y: 0, vx: 0, vy: 0, range: 0, damage: 0, knockback: 0, owner: null, explosion: null,
         image: this.scene.add.image(0, 0, this.texture),
       };
       this.items.push(b);
@@ -66,6 +70,7 @@ export class Bullets {
     b.damage = o.damage;
     b.knockback = o.knockback ?? 0;
     b.owner = o.owner ?? null;
+    b.explosion = o.explosion ?? null;
     b.image.setVisible(true).setRotation(this.rotate ? o.angle : 0);
     this.sync(b);
   }

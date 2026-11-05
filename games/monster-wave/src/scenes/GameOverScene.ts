@@ -7,6 +7,7 @@ import { SCENES } from "./keys";
 interface GameOverData {
   score: number;
   wave: number;
+  bestCombo?: number;
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -22,6 +23,7 @@ export class GameOverScene extends Phaser.Scene {
     this.add.text(cx, 170, "GAME OVER", textStyle(64, "#f87171", true)).setOrigin(0.5);
     this.add.text(cx, 270, `점수  ${data.score.toLocaleString()}`, textStyle(32, "#facc15", true)).setOrigin(0.5);
     this.add.text(cx, 320, `도달 웨이브  ${data.wave}`, textStyle(24, "#e2e8f0")).setOrigin(0.5);
+    this.add.text(cx, 358, `최고 콤보  ${data.bestCombo ?? 0}`, textStyle(20, "#cbd5e1")).setOrigin(0.5);
     this.add.text(cx, height - 150, "클릭 또는 Space: 다시하기", textStyle(24, "#ffffff")).setOrigin(0.5);
     this.add.text(cx, height - 110, "T: 타이틀로", textStyle(18, "#94a3b8")).setOrigin(0.5);
 

@@ -22,6 +22,10 @@ export class MonsterManager {
   private readonly moved = { x: 0, y: 0 };
   /** 원거리 몬스터가 발사할 때 호출 (GameScene이 투사체를 만든다) */
   onRangedAttack: ((m: Monster) => void) | null = null;
+  /** 몬스터가 가는 길을 막은 설치물을 공격할 때 호출 */
+  onAttackObstacle: ((m: Monster, col: number, row: number) => void) | null = null;
+  /** 설치물 공격 간격 (ms) */
+  obstacleAttackIntervalMs = 900;
 
   constructor(scene: Phaser.Scene, grid: Grid, flow: FlowField) {
     this.scene = scene;
@@ -116,6 +120,18 @@ export class MonsterManager {
         if (len > 0.001) {
           dirX = tx / len;
           dirY = ty / len;
+        }
+      }
+
+      // 가려는 방향 바로 앞 칸에 설치물이 있으면 공격한다 (길찾기가 "부수고 지나가는 쪽"을 골랐을 때)
+      if ((dirX !== 0 || dirY !== 0) && this.onAttackObstacle && now >= m.nextObstacleAttackAt) {
+        const probeX = m.x + dirX * (w / 2 + 5);
+        const probeY = cy + dirY * (d / 2 + 5);
+        const pc = Math.floor(probeX / t);
+        const pr = Math.floor(probeY / t);
+        if (grid.isObstacle(pc, pr)) {
+          m.nextObstacleAttackAt = now + this.obstacleAttackIntervalMs;
+          this.onAttackObstacle(m, pc, pr);
         }
       }
 

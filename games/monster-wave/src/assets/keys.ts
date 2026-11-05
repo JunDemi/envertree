@@ -20,6 +20,17 @@ export const TEX = {
   fireball: "fireball",
   /** 파편 파티클 (흰색, tint로 색 입힘) */
   particle: "particle",
+  /** 설치물 */
+  barricade: "barricade",
+  barrel: "barrel",
+  /** 투척/발사체 */
+  grenade: "grenade",
+  rocket: "rocket",
+  /** 드랍 아이템 */
+  ammoCrate: "ammo-crate",
+  healthPack: "health-pack",
+  /** 폭발 원 (흰색, 스케일과 tint로 사용) */
+  blast: "blast",
 } as const;
 
 export function monsterTexture(id: MonsterId): string {

@@ -91,6 +91,60 @@ export function generateTextures(scene: Phaser.Scene) {
     g.fillStyle(0xffffff).fillRect(0, 0, 4, 4);
   });
 
+  // ── 바리케이드: 나무 상자 (발자국 = 타일 1칸) ──
+  const bh = viewConfig.barricadeHeight;
+  bake(TEX.barricade, t, t + bh, () => {
+    drawBox(g, 0, 0, t, t, bh, 0xa16207);
+    // 판자 무늬
+    g.lineStyle(2, 0x713f12, 0.8);
+    g.lineBetween(4, t + bh * 0.35, t - 4, t + bh * 0.35);
+    g.lineBetween(4, t + bh * 0.7, t - 4, t + bh * 0.7);
+    g.lineStyle(2, 0x713f12, 0.5).strokeRect(5, 5, t - 10, t - 10);
+    g.lineBetween(5, 5, t - 5, t - 5);
+  });
+
+  // ── 드럼통: 빨간 통 (발자국보다 작게, 위에서 보면 원) ──
+  const rh = viewConfig.barrelHeight;
+  const rw = 28;
+  bake(TEX.barrel, rw + 2, rw * 0.6 + rh + 2, () => {
+    const top = rw * 0.3;
+    g.fillStyle(0x991b1b).fillRect(1, top, rw, rh);
+    g.fillStyle(0x7f1d1d).fillEllipse(1 + rw / 2, top + rh, rw, rw * 0.6);
+    g.fillStyle(0xdc2626).fillEllipse(1 + rw / 2, top, rw, rw * 0.6);
+    g.fillStyle(0xfacc15).fillRect(1, top + rh * 0.4, rw, 4);
+    g.fillStyle(0x111111).fillCircle(1 + rw / 2, top + rh * 0.4 + 2, 3);
+  });
+
+  // ── 수류탄, 로켓 ──
+  bake(TEX.grenade, 12, 12, () => {
+    g.fillStyle(0x3f6212).fillCircle(6, 7, 5);
+    g.fillStyle(0x84cc16).fillCircle(5, 6, 2);
+    g.fillStyle(0x9ca3af).fillRect(4, 0, 4, 3);
+  });
+  bake(TEX.rocket, 18, 8, () => {
+    g.fillStyle(0x6b7280).fillRect(2, 2, 12, 4);
+    g.fillStyle(0xef4444).fillTriangle(14, 1, 18, 4, 14, 7);
+    g.fillStyle(0x374151).fillTriangle(0, 0, 4, 2, 0, 2).fillTriangle(0, 8, 4, 6, 0, 6);
+    g.fillStyle(0xfbbf24).fillRect(0, 3, 2, 2);
+  });
+
+  // ── 드랍 아이템: 탄약 상자(초록), 회복(흰 상자에 빨간 십자) ──
+  bake(TEX.ammoCrate, 22, 22, () => {
+    drawBox(g, 1, 1, 20, 8, 12, 0x65a30d);
+    g.fillStyle(0xfef08a).fillRect(6, 12, 3, 6).fillRect(10, 12, 3, 6).fillRect(14, 12, 3, 6);
+  });
+  bake(TEX.healthPack, 22, 22, () => {
+    drawBox(g, 1, 1, 20, 8, 12, 0xf1f5f9);
+    g.fillStyle(0xdc2626).fillRect(9, 10, 4, 10).fillRect(6, 13, 10, 4);
+  });
+
+  // ── 폭발 원 ──
+  bake(TEX.blast, 64, 64, () => {
+    g.fillStyle(0xffffff, 0.35).fillCircle(32, 32, 32);
+    g.fillStyle(0xffffff, 0.8).fillCircle(32, 32, 22);
+    g.fillStyle(0xffffff, 1).fillCircle(32, 32, 12);
+  });
+
   g.destroy();
 }
 

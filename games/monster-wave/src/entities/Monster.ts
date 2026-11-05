@@ -23,6 +23,8 @@ export class Monster {
   private flashUntil = 0;
   /** 원거리 공격: 다음 발사 가능 시각 (0 = 아직 사거리에 들어온 적 없음) */
   nextAttackAt = 0;
+  /** 설치물(바리케이드/드럼통) 공격: 다음 공격 가능 시각 */
+  nextObstacleAttackAt = 0;
   /** 원거리 공격: 시야 확인 캐시 */
   losCheckAt = 0;
   hasLos = false;
@@ -44,6 +46,7 @@ export class Monster {
     this.pushY = 0;
     this.flashUntil = 0;
     this.nextAttackAt = 0;
+    this.nextObstacleAttackAt = 0;
     this.losCheckAt = 0;
     this.hasLos = false;
     this.sprite.setTexture(monsterTexture(def.id)).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);

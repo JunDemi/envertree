@@ -51,7 +51,7 @@ export class TitleScene extends Phaser.Scene {
     const prompt = this.add.text(cx, height - 110, "클릭 또는 Space로 시작", textStyle(26, "#facc15", true)).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.35, duration: 650, yoyo: true, repeat: -1 });
 
-    this.add.text(width - 12, height - 10, "Phase 3 프로토타입", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(1, 1);
+    this.add.text(width - 12, height - 10, "Phase 4 프로토타입", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(1, 1);
 
     notifyReady();
 

@@ -7,8 +7,14 @@ import type { InputSource, PlayerInput } from "./types";
  * 키 매핑은 config/controls.ts에서 가져온다.
  */
 export class KeyboardMouseInput implements InputSource {
-  private readonly keys: Record<"up" | "down" | "left" | "right" | "prev" | "next", Phaser.Input.Keyboard.Key[]>;
-  private readonly slotKeys: Phaser.Input.Keyboard.Key[][];
+  private readonly keys: Record<"up" | "down" | "left" | "right", Phaser.Input.Keyboard.Key[]>;
+  private readonly allKeys: Phaser.Input.Keyboard.Key[] = [];
+  /**
+   * 무기 선택/순환은 "누른 순간" 이벤트로 받아 두었다가 다음 read()에서 처리한다.
+   * (매 프레임 JustDown으로 확인하면, 한 프레임 안에 눌렀다 뗀 짧은 입력을 놓친다)
+   */
+  private pendingSlot: number | null = null;
+  private pendingCycle: -1 | 0 | 1 = 0;
   private wheelDelta = 0;
   /**
    * 사격 버튼을 한 번 뗀 뒤에만 사격을 허용한다.
@@ -28,16 +34,23 @@ export class KeyboardMouseInput implements InputSource {
     this.scene = scene;
     const kb = scene.input.keyboard;
     if (!kb) throw new Error("키보드 입력을 사용할 수 없습니다.");
-    const add = (names: readonly KeyName[]) => names.map((n) => kb.addKey(n));
+    const add = (names: readonly KeyName[]) =>
+      names.map((n) => {
+        const key = kb.addKey(n);
+        this.allKeys.push(key);
+        return key;
+      });
     this.keys = {
       up: add(controls.moveUp),
       down: add(controls.moveDown),
       left: add(controls.moveLeft),
       right: add(controls.moveRight),
-      prev: add(controls.prevWeapon),
-      next: add(controls.nextWeapon),
     };
-    this.slotKeys = controls.weaponSlots.map((n) => [kb.addKey(n)]);
+    for (const key of add(controls.prevWeapon)) key.on("down", () => (this.pendingCycle = -1));
+    for (const key of add(controls.nextWeapon)) key.on("down", () => (this.pendingCycle = 1));
+    controls.weaponSlots.forEach((name, i) => {
+      for (const key of add([name])) key.on("down", () => (this.pendingSlot = i));
+    });
     scene.input.on("wheel", this.onWheel);
     // 일시정지에서 돌아올 때(클릭으로 재개할 수 있음)도 다시 버튼을 떼야 사격
     scene.events.on(Phaser.Scenes.Events.RESUME, this.disarmFire);
@@ -45,7 +58,6 @@ export class KeyboardMouseInput implements InputSource {
 
   read(): PlayerInput {
     const down = (keys: Phaser.Input.Keyboard.Key[]) => keys.some((k) => k.isDown);
-    const pressed = (keys: Phaser.Input.Keyboard.Key[]) => keys.some((k) => Phaser.Input.Keyboard.JustDown(k));
 
     // 이동: 8방향, 대각선도 같은 속도가 되도록 정규화
     let mx = (down(this.keys.right) ? 1 : 0) - (down(this.keys.left) ? 1 : 0);
@@ -61,14 +73,11 @@ export class KeyboardMouseInput implements InputSource {
     if (!buttonDown) this.fireArmed = true;
     const world = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
-    let selectSlot: number | null = null;
-    this.slotKeys.forEach((keys, i) => {
-      if (pressed(keys)) selectSlot = i;
-    });
-
-    let cycle: -1 | 0 | 1 = 0;
-    if (pressed(this.keys.prev) || this.wheelDelta < 0) cycle = -1;
-    else if (pressed(this.keys.next) || this.wheelDelta > 0) cycle = 1;
+    const selectSlot = this.pendingSlot;
+    let cycle = this.pendingCycle;
+    if (cycle === 0 && this.wheelDelta !== 0) cycle = this.wheelDelta < 0 ? -1 : 1;
+    this.pendingSlot = null;
+    this.pendingCycle = 0;
     this.wheelDelta = 0;
 
     return {
@@ -84,6 +93,7 @@ export class KeyboardMouseInput implements InputSource {
 
   destroy() {
     this.scene.input.off("wheel", this.onWheel);
+    for (const key of this.allKeys) key.removeAllListeners();
     this.scene.events.off(Phaser.Scenes.Events.RESUME, this.disarmFire);
   }
 }
