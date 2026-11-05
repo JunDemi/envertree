@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "games/*"
+  - "packages/*"
+
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

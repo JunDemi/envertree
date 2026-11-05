@@ -1,0 +1,15 @@
+{
+  "name": "envertree",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.23.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "pnpm --filter portal dev",
+    "build:games": "node scripts/build-games.ts",
+    "build": "pnpm build:games && pnpm --filter portal build",
+    "lint": "pnpm -r --if-present lint"
+  }
+}
