@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { siteConfig } from "@/lib/site";
+import { UserMenu, UserMenuSkeleton } from "./user-menu";
 
 export function SiteHeader() {
   return (
@@ -8,15 +10,11 @@ export function SiteHeader() {
         <Link href="/" className="text-lg font-bold tracking-tight">
           🎮 {siteConfig.name}
         </Link>
-        {/* 로그인 버튼 자리: Phase 3에서 Supabase Auth와 연결 */}
-        <button
-          type="button"
-          disabled
-          title="곧 지원 예정"
-          className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-500 dark:border-zinc-700"
-        >
-          로그인
-        </button>
+        {/* 로그인 정보는 쿠키를 읽어야 하므로 요청 시점에 따로 그린다.
+            Suspense로 감싸서 나머지 페이지는 정적으로 유지된다. */}
+        <Suspense fallback={<UserMenuSkeleton />}>
+          <UserMenu />
+        </Suspense>
       </div>
     </header>
   );
