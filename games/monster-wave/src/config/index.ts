@@ -1,4 +1,5 @@
 /** 모든 설정을 한곳에서 가져오기 위한 진입점 */
+export * from "./ai";
 export * from "./arena";
 export * from "./combat";
 export * from "./combo";

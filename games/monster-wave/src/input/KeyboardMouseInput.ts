@@ -10,6 +10,14 @@ export class KeyboardMouseInput implements InputSource {
   private readonly keys: Record<"up" | "down" | "left" | "right" | "prev" | "next", Phaser.Input.Keyboard.Key[]>;
   private readonly slotKeys: Phaser.Input.Keyboard.Key[][];
   private wheelDelta = 0;
+  /**
+   * 사격 버튼을 한 번 뗀 뒤에만 사격을 허용한다.
+   * 타이틀/일시정지 화면을 클릭해서 넘어오면 그 클릭이 아직 눌린 상태라 첫 발이 나가기 때문.
+   */
+  private fireArmed = false;
+  private readonly disarmFire = () => {
+    this.fireArmed = false;
+  };
   private readonly onWheel = (_p: unknown, _o: unknown, _dx: number, dy: number) => {
     this.wheelDelta += dy;
   };
@@ -31,6 +39,8 @@ export class KeyboardMouseInput implements InputSource {
     };
     this.slotKeys = controls.weaponSlots.map((n) => [kb.addKey(n)]);
     scene.input.on("wheel", this.onWheel);
+    // 일시정지에서 돌아올 때(클릭으로 재개할 수 있음)도 다시 버튼을 떼야 사격
+    scene.events.on(Phaser.Scenes.Events.RESUME, this.disarmFire);
   }
 
   read(): PlayerInput {
@@ -47,6 +57,8 @@ export class KeyboardMouseInput implements InputSource {
 
     // 조준: 화면의 마우스 위치를 월드 좌표로 (카메라가 움직여도 매 프레임 다시 계산)
     const pointer = this.scene.input.activePointer;
+    const buttonDown = pointer.leftButtonDown();
+    if (!buttonDown) this.fireArmed = true;
     const world = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
     let selectSlot: number | null = null;
@@ -64,7 +76,7 @@ export class KeyboardMouseInput implements InputSource {
       moveY: my,
       aimX: world.x,
       aimY: world.y,
-      fire: pointer.leftButtonDown(),
+      fire: buttonDown && this.fireArmed,
       selectSlot,
       cycleWeapon: cycle,
     };
@@ -72,5 +84,6 @@ export class KeyboardMouseInput implements InputSource {
 
   destroy() {
     this.scene.input.off("wheel", this.onWheel);
+    this.scene.events.off(Phaser.Scenes.Events.RESUME, this.disarmFire);
   }
 }
