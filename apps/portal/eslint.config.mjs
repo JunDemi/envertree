@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 빌드된 게임 결과물 (scripts/build-games.ts가 복사)
+    "public/play/**",
   ]),
 ]);
 

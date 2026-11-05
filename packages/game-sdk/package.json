@@ -1,0 +1,17 @@
+{
+  "name": "@envertree/game-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "게임 → 포털 postMessage 헬퍼와 메시지 타입",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~7.0.2"
+  }
+}

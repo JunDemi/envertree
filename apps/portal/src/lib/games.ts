@@ -2,9 +2,10 @@
  * 게임 레지스트리.
  *
  * 새 게임을 추가하려면:
- *  1. games/<slug> 폴더에 게임을 만든다 (Phase 4에서 템플릿 제공)
+ *  1. games/_template 을 games/<slug> 로 복사해 게임을 만든다
  *  2. 아래 `games` 배열에 항목 하나를 추가한다
  *  3. 썸네일을 public/thumbnails/ 에 넣는다
+ *  자세한 절차는 루트 README.md 참고
  *
  * 빌드된 게임은 /play/<slug>/index.html 에서 서비스된다 (getPlayUrl).
  */
@@ -43,6 +44,20 @@ export interface Game {
 }
 
 export const games: Game[] = [
+  {
+    slug: "sample",
+    title: "별 받기",
+    description: "바구니를 움직여 떨어지는 별을 받으세요. 별을 받을수록 점점 빨라지고, 3개를 놓치면 끝납니다.",
+    thumbnail: "/thumbnails/sample.svg",
+    tags: ["arcade", "casual"],
+    size: { width: 800, height: 600 },
+    controls: [
+      { input: "← →", action: "바구니 이동" },
+      { input: "마우스 이동", action: "바구니 이동" },
+      { input: "Space / 클릭", action: "시작 · 다시 시작" },
+    ],
+    addedAt: "2026-11-06",
+  },
   {
     slug: "dummy",
     title: "클릭 챌린지",

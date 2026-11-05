@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>
+  <path id="s" d="M32 3l8.6 18.9L61 24.3 45.8 38.6 49.8 59 32 48.9 14.2 59l4-20.4L3 24.3l20.4-2.4z" fill="#facc15"/></defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <use href="#s" transform="translate(120 50) scale(.9)"/>
+  <use href="#s" transform="translate(470 30) scale(.7)"/>
+  <use href="#s" transform="translate(300 120) scale(1.1)"/>
+  <rect x="250" y="300" width="140" height="24" rx="8" fill="#38bdf8"/>
+  <text x="320" y="260" text-anchor="middle" font-family="system-ui, sans-serif" font-size="40" font-weight="700" fill="#fff">STAR CATCH</text>
+</svg>

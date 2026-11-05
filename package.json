@@ -7,9 +7,10 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "dev": "pnpm --filter portal dev",
+    "dev": "node scripts/build-games.ts --missing-only && pnpm --filter portal dev",
+    "build": "pnpm --filter portal build",
     "build:games": "node scripts/build-games.ts",
-    "build": "pnpm build:games && pnpm --filter portal build",
-    "lint": "pnpm -r --if-present lint"
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck"
   }
 }

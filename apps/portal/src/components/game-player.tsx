@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useGameMessages } from "@/lib/use-game-messages";
 
 interface GamePlayerProps {
   title: string;
@@ -16,12 +17,49 @@ interface GamePlayerProps {
  * 참고: 게임은 같은 출처의 정적 파일이라 sandbox를 걸지 않는다.
  * (sandbox에 allow-scripts + allow-same-origin을 같이 주면 보안 효과가 없고,
  * allow-same-origin을 빼면 게임에서 localStorage를 쓸 수 없다.)
- * 게임 → 포털 메시지는 Phase 4에서 origin과 source를 검증한다.
+ * 게임 → 포털 메시지는 useGameMessages에서 origin, source, 형식을 검증한다.
  */
+
+type GameStatus = "loading" | "ready" | "playing" | "over";
+
+const STATUS_LABEL: Record<GameStatus, string> = {
+  loading: "불러오는 중…",
+  ready: "준비 완료",
+  playing: "플레이 중",
+  over: "게임 오버",
+};
+
+const STATUS_DOT: Record<GameStatus, string> = {
+  loading: "bg-zinc-400",
+  ready: "bg-blue-500",
+  playing: "bg-green-500",
+  over: "bg-red-500",
+};
 export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [status, setStatus] = useState<GameStatus>("loading");
+  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [bestScore, setBestScore] = useState<number | null>(null);
+
+  useGameMessages(iframeRef, (message) => {
+    switch (message.type) {
+      case "ready":
+        setStatus("ready");
+        break;
+      case "gameStart":
+        setStatus("playing");
+        break;
+      case "gameOver": {
+        const { score } = message.payload;
+        setStatus("over");
+        setLastScore(score);
+        setBestScore((best) => (best === null ? score : Math.max(best, score)));
+        break;
+      }
+    }
+  });
   const canFullscreen = useSyncExternalStore(
     noopSubscribe,
     () => document.fullscreenEnabled,
@@ -67,13 +105,33 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
             src={src}
             title={title}
             allow="fullscreen; autoplay; gamepad"
-            onLoad={(e) => e.currentTarget.focus()}
+            onLoad={(e) => {
+              e.currentTarget.focus();
+              // SDK의 ready()를 보내지 않는 게임도 로드가 끝나면 준비 완료로 표시
+              setStatus((s) => (s === "loading" ? "ready" : s));
+            }}
             className={`block h-full w-full border-0 ${isFullscreen ? "" : "rounded-xl"}`}
           />
         </div>
       </div>
-      {canFullscreen && (
-        <div className="flex justify-end">
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4 text-sm" aria-live="polite">
+          <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+            <span className={`size-2 rounded-full ${STATUS_DOT[status]}`} />
+            {STATUS_LABEL[status]}
+          </span>
+          {lastScore !== null && (
+            <span>
+              점수 <strong className="font-semibold tabular-nums">{lastScore.toLocaleString()}</strong>
+            </span>
+          )}
+          {bestScore !== null && (
+            <span className="text-zinc-600 dark:text-zinc-400">
+              최고 <strong className="font-semibold tabular-nums">{bestScore.toLocaleString()}</strong>
+            </span>
+          )}
+        </div>
+        {canFullscreen && (
           <button
             type="button"
             onClick={toggleFullscreen}
@@ -81,8 +139,8 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
           >
             ⛶ 전체화면
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
