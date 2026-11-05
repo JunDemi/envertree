@@ -86,29 +86,6 @@ export const games: Game[] = [
     controls: [{ input: "마우스 클릭", action: "점수 획득" }],
     addedAt: "2026-11-05",
   },
-  {
-    slug: "space-dodge",
-    title: "스페이스 닷지",
-    description: "쏟아지는 운석을 피해 최대한 오래 살아남으세요.",
-    thumbnail: "/thumbnails/space-dodge.svg",
-    tags: ["action", "arcade"],
-    size: { width: 960, height: 540 },
-    controls: [
-      { input: "← →", action: "좌우 이동" },
-      { input: "Space", action: "부스터" },
-    ],
-    addedAt: "2026-11-04",
-  },
-  {
-    slug: "block-match",
-    title: "블록 매치",
-    description: "같은 색 블록을 3개 이상 이어 없애는 퍼즐 게임입니다.",
-    thumbnail: "/thumbnails/block-match.svg",
-    tags: ["puzzle", "casual"],
-    size: { width: 600, height: 800 },
-    controls: [{ input: "마우스 드래그", action: "블록 교환" }],
-    addedAt: "2026-11-03",
-  },
 ];
 
 /** 최신 등록순으로 정렬된 전체 게임 목록 */
