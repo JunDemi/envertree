@@ -17,6 +17,7 @@ export const GAME_TAGS = {
   arcade: "아케이드",
   casual: "캐주얼",
   strategy: "전략",
+  shooter: "슈팅",
 } as const;
 
 export type GameTag = keyof typeof GAME_TAGS;
@@ -44,6 +45,23 @@ export interface Game {
 }
 
 export const games: Game[] = [
+  {
+    slug: "monster-wave",
+    title: "몬스터웨이브",
+    description:
+      "사방에서 몰려오는 몬스터를 처치하며 버티는 탑다운 웨이브 서바이벌 슈팅. 빠르게 연속 처치해 콤보를 이으면 새 무기가 열립니다.",
+    thumbnail: "/thumbnails/monster-wave.svg",
+    tags: ["action", "shooter", "arcade"],
+    size: { width: 960, height: 640 },
+    controls: [
+      { input: "W A S D", action: "이동" },
+      { input: "마우스", action: "조준" },
+      { input: "왼쪽 클릭", action: "사격 (누르고 있으면 연사)" },
+      { input: "1~9 · 휠 · Q/E", action: "무기 교체" },
+      { input: "ESC / P", action: "일시정지" },
+    ],
+    addedAt: "2026-11-07",
+  },
   {
     slug: "sample",
     title: "별 받기",
