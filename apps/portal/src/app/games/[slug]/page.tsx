@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -8,6 +8,12 @@ import { GameCard } from "@/components/game-card";
 import { GamePlayer } from "@/components/game-player";
 import { GAME_TAGS, games, getGameBySlug, getPlayUrl, getRelatedGames } from "@/lib/games";
 import { siteConfig } from "@/lib/site";
+
+/**
+ * 게임 페이지만: 화면을 노치/홈 표시줄 영역까지 쓰게 한다 (가로 화면에서 게임을 최대한 크게).
+ * 노치에 가려지면 안 되는 버튼은 env(safe-area-inset-*)로 피한다.
+ */
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export function generateStaticParams() {
   return games.map((game) => ({ slug: game.slug }));

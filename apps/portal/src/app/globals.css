@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * 터치 기기 화면 방향 조건 (게임 플레이 페이지에서 사용)
+ * - immersive: 터치 기기를 가로로 눕힘 → 게임이 화면 전체를 채운다
+ * - touch-portrait: 터치 기기를 세로로 듦 → "가로로 돌려주세요" 안내
+ * JS가 아니라 CSS로 판단하므로 페이지가 준비되기 전에도 처음부터 올바르게 보인다.
+ */
+@custom-variant immersive (@media (pointer: coarse) and (orientation: landscape));
+@custom-variant touch-portrait (@media (pointer: coarse) and (orientation: portrait));
+
 :root {
   --background: #fafafa;
   --foreground: #18181b;
@@ -25,4 +34,19 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* 가로형 게임을 터치 기기 가로 화면으로 볼 때: 뒤 페이지 스크롤, 당겨서 새로고침 막기 */
+@media (pointer: coarse) and (orientation: landscape) {
+  body:has([data-game-player="landscape"]) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}
+
+/* 세로 안내의 휴대폰 아이콘이 가로로 눕는 동작 */
+@keyframes rotate-hint {
+  0%, 20% { transform: rotate(0deg); }
+  50%, 70% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
 }

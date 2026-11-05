@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useGameMessages } from "@/lib/use-game-messages";
 
@@ -39,6 +40,7 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [rotateDismissed, setRotateDismissed] = useState(false);
   const [status, setStatus] = useState<GameStatus>("loading");
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [lastWave, setLastWave] = useState<number | null>(null);
@@ -98,21 +100,28 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
   }
 
   const ratio = width / height;
-  // 일반 모드: 헤더와 버튼 줄을 뺀 화면 높이 안에 들어가게
-  // 전체화면: 화면 전체 안에 들어가게
-  const frameWidth = isFullscreen
-    ? `min(100vw, calc(100dvh * ${ratio}))`
-    : `min(100%, calc((100dvh - 9rem) * ${ratio}))`;
+  // 가로형 게임만 "터치 기기 가로 화면 = 화면 꽉 채우기"와 "세로로 들면 돌려달라는 안내"를 적용한다
+  const landscape = width >= height;
+
+  // 크기 규칙 (CSS 변수 --ratio = 가로/세로 비율)
+  // - 기본: 헤더와 버튼 줄을 뺀 화면 높이 안에 들어가게
+  // - 전체화면(data-fullscreen) / 터치 기기 가로 화면(immersive): 화면 전체 안에 들어가게
+  const containerClass = landscape
+    ? "group relative flex items-center justify-center rounded-xl bg-black data-[fullscreen=true]:h-dvh data-[fullscreen=true]:w-dvw data-[fullscreen=true]:rounded-none immersive:fixed immersive:inset-0 immersive:z-50 immersive:rounded-none immersive:pr-[env(safe-area-inset-right)] immersive:pl-[env(safe-area-inset-left)]"
+    : "group relative flex items-center justify-center rounded-xl bg-black data-[fullscreen=true]:h-dvh data-[fullscreen=true]:w-dvw data-[fullscreen=true]:rounded-none";
+  const frameClass = landscape
+    ? "w-[min(100%,calc((100dvh_-_9rem)*var(--ratio)))] group-data-[fullscreen=true]:w-[min(100vw,calc(100dvh*var(--ratio)))] immersive:w-[min(100%,calc(100dvh*var(--ratio)))]"
+    : "w-[min(100%,calc((100dvh_-_9rem)*var(--ratio)))] group-data-[fullscreen=true]:w-[min(100vw,calc(100dvh*var(--ratio)))]";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div data-game-player={landscape ? "landscape" : "portrait"} className="flex flex-col gap-2">
       <div
         ref={containerRef}
-        className={`flex items-center justify-center bg-black ${
-          isFullscreen ? "h-dvh w-dvw" : "rounded-xl"
-        }`}
+        data-fullscreen={isFullscreen}
+        className={containerClass}
+        style={{ "--ratio": ratio } as React.CSSProperties}
       >
-        <div style={{ width: frameWidth, aspectRatio: `${width} / ${height}` }}>
+        <div className={frameClass} style={{ aspectRatio: `${width} / ${height}` }}>
           <iframe
             ref={iframeRef}
             src={src}
@@ -123,11 +132,43 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
               // SDK의 ready()를 보내지 않는 게임도 로드가 끝나면 준비 완료로 표시
               setStatus((s) => (s === "loading" ? "ready" : s));
             }}
-            className={`block h-full w-full border-0 ${isFullscreen ? "" : "rounded-xl"}`}
+            className="block h-full w-full rounded-xl border-0 group-data-[fullscreen=true]:rounded-none immersive:rounded-none"
           />
         </div>
+
+        {landscape && (
+          <>
+            {/* 터치 기기 가로 화면: 헤더가 가려지므로 나가기 버튼만 남긴다 */}
+            <Link
+              href="/"
+              aria-label="게임 목록으로"
+              className="absolute top-2 left-[max(0.5rem,env(safe-area-inset-left))] hidden size-9 items-center justify-center rounded-full bg-black/45 text-lg text-white/90 backdrop-blur-sm immersive:flex"
+            >
+              ←
+            </Link>
+
+            {/* 터치 기기 세로 화면: 가로로 돌려달라는 안내 (닫고 그냥 할 수도 있음) */}
+            {!rotateDismissed && (
+              <div className="absolute inset-0 z-10 hidden flex-col items-center justify-center gap-3 rounded-xl bg-black/85 p-6 text-center text-white touch-portrait:flex">
+                <span aria-hidden className="text-4xl motion-safe:animate-[rotate-hint_1.6s_ease-in-out_infinite]">
+                  📱
+                </span>
+                <p className="text-base font-semibold">화면을 가로로 돌려주세요</p>
+                <p className="text-sm text-zinc-300">가로로 돌리면 게임이 화면 전체에 크게 보여요</p>
+                <button
+                  type="button"
+                  onClick={() => setRotateDismissed(true)}
+                  className="mt-1 rounded-full border border-white/30 px-4 py-1.5 text-sm text-zinc-200"
+                >
+                  세로로 그냥 할게요
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
-      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3">
+
+      <div className="flex min-h-9 flex-wrap items-center justify-between gap-3 immersive:hidden">
         <div className="flex items-center gap-4 text-sm" aria-live="polite">
           <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
             <span className={`size-2 rounded-full ${STATUS_DOT[status]}`} />
