@@ -66,6 +66,17 @@ export function GamePlayer({ title, src, width, height }: GamePlayerProps) {
     () => false,
   );
 
+  // 포털 화면이 준비(hydration)되기 전에 iframe 로드가 먼저 끝나면
+  // onLoad 이벤트와 게임의 ready 메시지를 둘 다 놓친다. 준비된 시점에 이미 로드돼 있으면 준비 완료로 본다.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const doc = iframeRef.current?.contentDocument;
+      const loaded = doc?.readyState === "complete" && doc.URL === new URL(src, window.location.href).href;
+      if (loaded) setStatus((s) => (s === "loading" ? "ready" : s));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [src]);
+
   useEffect(() => {
     function onChange() {
       setIsFullscreen(document.fullscreenElement === containerRef.current);

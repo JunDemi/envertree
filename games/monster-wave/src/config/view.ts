@@ -9,7 +9,9 @@
  */
 export const viewConfig = {
   /** 벽/장애물 블록의 높이 (px) */
-  wallHeight: 44,
+  wallHeight: 36,
+  /** 플레이어를 가리는 벽의 투명도 (플레이어가 벽 뒤에 있을 때) */
+  occludingWallAlpha: 0.4,
 
   /** 윗면은 원래 색보다 밝게, 앞면은 어둡게 (0~1, 섞는 비율) */
   topLighten: 0.25,
@@ -22,6 +24,11 @@ export const viewConfig = {
   shadowAlpha: 0.35,
   shadowScaleX: 1.25,
   shadowScaleY: 1.6,
+
+  /** 총을 드는 높이 (발밑에서 위로 px). 조준 기준점과 총 그림 위치에 쓴다 */
+  gunHeight: 16,
+  /** 카메라가 비추는 지점: 발밑보다 이만큼 위 (캐릭터 몸통 가운데쯤) */
+  cameraFocusHeight: 20,
 
   /** 바닥 체크무늬 두 색 */
   floorColorA: 0x2a2f3a,
