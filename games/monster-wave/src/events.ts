@@ -21,4 +21,6 @@ export const GameEvents = {
   weapons: "hud-weapons",
   /** (name: string, slot: number) 새 무기 해금 */
   unlock: "hud-unlock",
+  /** (name: string, level: number, detail: string) 무기 레벨업 (detail: "연사·피해 강화" 등) */
+  levelUp: "hud-level-up",
 } as const;

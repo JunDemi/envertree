@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { playerConfig, viewConfig } from "../config";
+import { debugState, playerConfig, viewConfig } from "../config";
 import { TEX } from "../assets/keys";
 import type { PlayerInput } from "../input/types";
 import { addShadow, placeShadow } from "../view/depth";
@@ -55,7 +55,7 @@ export class Player {
 
   /** 피해를 입는다. 무적 중이면 무시. 실제로 피해를 입었으면 true */
   takeDamage(amount: number): boolean {
-    if (this.dead || this.isInvincible || amount <= 0) return false;
+    if (this.dead || this.isInvincible || amount <= 0 || debugState.invincible) return false;
     this.hp = Math.max(0, this.hp - amount);
     this.invincibleUntil = this.sprite.scene.time.now + playerConfig.invincibleMs;
     if (this.hp === 0) {

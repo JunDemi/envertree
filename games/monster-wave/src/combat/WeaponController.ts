@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import {
+  weaponUpgradeConfig,
   weapons,
+  type Explosion,
   type GunWeapon,
   type PlaceableWeapon,
   type RocketWeapon,
@@ -15,6 +17,41 @@ export interface WeaponState {
   ammo: number | null;
   /** 이 무기를 다시 쏠 수 있는 시각 (무기마다 따로: 로켓을 쏘고 바로 바꾼 무기는 기다리지 않음) */
   nextFireAt: number;
+  /** 레벨 (1부터). 레벨이 반영된 수치는 effective */
+  level: number;
+  /** 레벨이 반영된 무기 정의 (레벨이 바뀔 때마다 다시 계산) */
+  effective: WeaponDef;
+}
+
+/** 레벨 배율을 적용한 무기 정의를 만든다 (원본 config는 바꾸지 않음) */
+export function applyLevel(def: WeaponDef, level: number): WeaponDef {
+  const n = level - 1;
+  if (n <= 0) return def;
+  const u = weaponUpgradeConfig;
+  const boom = (e: Explosion): Explosion => ({
+    ...e,
+    radius: e.radius * u.explosion.radiusMul ** n,
+    damage: e.damage * u.explosion.damageMul ** n,
+  });
+  switch (def.kind) {
+    case "gun":
+      return {
+        ...def,
+        fireIntervalMs: def.fireIntervalMs * u.gun.fireIntervalMul ** n,
+        damage: def.damage * u.gun.damageMul ** n,
+      };
+    case "placeable":
+      return {
+        ...def,
+        placeable:
+          def.placeable.type === "barricade"
+            ? { ...def.placeable, maxHp: Math.round(def.placeable.maxHp * u.barricade.maxHpMul ** n) }
+            : { ...def.placeable, explosion: boom(def.placeable.explosion) },
+      };
+    case "thrown":
+    case "rocket":
+      return { ...def, explosion: boom(def.explosion) };
+  }
 }
 
 /**
@@ -32,6 +69,8 @@ export interface WeaponHandlers {
   onChanged(): void;
   /** 새 무기 해금 */
   onUnlocked(def: WeaponDef, slot: number): void;
+  /** 무기 레벨업 */
+  onLevelUp(def: WeaponDef, level: number): void;
 }
 
 /**
@@ -50,6 +89,8 @@ export class WeaponController {
       unlocked: def.unlockCombo === 0,
       ammo: def.maxAmmo === null ? null : def.unlockCombo === 0 ? def.startAmmo : 0,
       nextFireAt: 0,
+      level: 1,
+      effective: def,
     }));
   }
 
@@ -62,7 +103,8 @@ export class WeaponController {
     const st = this.current;
     if (now < st.nextFireAt) return;
     if (st.ammo !== null && st.ammo <= 0) return;
-    const def = st.def;
+    // 레벨이 반영된 수치로 쏜다
+    const def = st.effective;
 
     let used = true;
     switch (def.kind) {
@@ -126,15 +168,52 @@ export class WeaponController {
     }
   }
 
-  /** 콤보가 올랐을 때: 임계값에 처음 도달한 무기를 해금 */
-  checkUnlocks(combo: number) {
+  /** 모든 무기가 열렸는지 */
+  get allUnlocked(): boolean {
+    return this.states.every((st) => st.unlocked);
+  }
+
+  /**
+   * 이 무기가 다음 레벨이 되는 콤보.
+   * 레벨업 대상이 아니거나, 최대 레벨이거나, (해금 우선 설정에서) 아직 안 열린 무기가 있으면 null
+   */
+  levelUpCombo(st: WeaponState): number | null {
+    if (!st.unlocked || st.def.unlockCombo <= 0 || st.level >= weaponUpgradeConfig.maxLevel) return null;
+    if (weaponUpgradeConfig.levelUpAfterAllUnlocked && !this.allUnlocked) return null;
+    return Math.round(st.def.unlockCombo * weaponUpgradeConfig.levelUpComboMultiplier);
+  }
+
+  /**
+   * 콤보가 1 올랐을 때 호출.
+   * - 아직 잠긴 무기: 콤보가 unlockCombo 이상이면 해금
+   * - 이미 연 무기: 콤보가 레벨업 콤보(해금 콤보 × 배율)에 막 도달하면 레벨업
+   *   (해금 우선 설정이면, 이번 처치 "전에" 이미 모든 무기가 열려 있었을 때만)
+   * 레벨업이 하나라도 일어났으면 true (호출하는 쪽에서 콤보를 초기화한다)
+   */
+  checkUnlocks(combo: number): boolean {
+    let leveledUp = false;
+    const levelUpAllowed = !weaponUpgradeConfig.levelUpAfterAllUnlocked || this.allUnlocked;
     this.states.forEach((st, i) => {
-      if (st.unlocked || combo < st.def.unlockCombo) return;
-      st.unlocked = true;
-      st.ammo = st.def.maxAmmo === null ? null : st.def.startAmmo;
-      this.h.onUnlocked(st.def, i + 1);
-      this.h.onChanged();
+      const t = st.def.unlockCombo;
+      if (t <= 0) return;
+      if (!st.unlocked) {
+        if (combo < t) return;
+        st.unlocked = true;
+        st.ammo = st.def.maxAmmo === null ? null : st.def.startAmmo;
+        this.h.onUnlocked(st.def, i + 1);
+        this.h.onChanged();
+        return;
+      }
+      if (levelUpAllowed && combo === this.levelUpCombo(st)) {
+        st.level += 1;
+        st.effective = applyLevel(st.def, st.level);
+        if (weaponUpgradeConfig.refillAmmo && st.def.maxAmmo !== null) st.ammo = st.def.maxAmmo;
+        leveledUp = true;
+        this.h.onLevelUp(st.def, st.level);
+        this.h.onChanged();
+      }
     });
+    return leveledUp;
   }
 
   /** 탄약 제한 무기가 하나라도 열려 있는지 (탄약 상자 드랍 조건) */

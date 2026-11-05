@@ -3,6 +3,7 @@ import { controls, debugState, gameConfig, playerConfig } from "../config";
 import { sfx } from "../audio/Sfx";
 import { GameEvents } from "../events";
 import { DISARM_FIRE_EVENT } from "../input/KeyboardMouseInput";
+import { DebugTools } from "../systems/DebugTools";
 import type { GameScene } from "./GameScene";
 import { textStyle } from "../ui/text";
 import { SCENES } from "./keys";
@@ -33,7 +34,8 @@ export class UIScene extends Phaser.Scene {
   private waveText!: Phaser.GameObjects.Text;
   private banner!: Phaser.GameObjects.Text;
   private subBanner!: Phaser.GameObjects.Text;
-  private fpsText?: Phaser.GameObjects.Text;
+  private fpsText!: Phaser.GameObjects.Text;
+  private debugPanel!: Phaser.GameObjects.Text;
   private gameScene!: GameScene;
   private slots: SlotView[] = [];
   private comboLayer!: Phaser.GameObjects.Container;
@@ -77,10 +79,9 @@ export class UIScene extends Phaser.Scene {
     this.subBanner = this.add.text(width / 2, height * 0.3 + 50, "", textStyle(20, "#e2e8f0")).setOrigin(0.5).setAlpha(0);
     this.scoreText = this.add.text(width - 16, 12, "", textStyle(20, "#ffffff", true)).setOrigin(1, 0);
     this.monstersText = this.add.text(width - 16, 40, "", textStyle(15, "#cbd5e1")).setOrigin(1, 0);
-    if (debugState.enabled) {
-      this.add.text(16, 64, "DEBUG  K 그런트+50 · N 웨이브 건너뛰기 · U 전 무기", textStyle(13, "#f472b6", true));
-      this.fpsText = this.add.text(16, 40, "", textStyle(14, "#f472b6"));
-    }
+    // 디버그 패널 (F2 또는 ?debug 일 때만 보임)
+    this.fpsText = this.add.text(16, 40, "", textStyle(14, "#f472b6"));
+    this.debugPanel = this.add.text(16, 62, "", { ...textStyle(12, "#f9a8d4"), lineSpacing: 3 });
 
     // 콤보 (오른쪽, 점수 아래). 콤보가 0이면 숨김
     this.comboText = this.add.text(0, 0, "", textStyle(30, "#fb923c", true)).setOrigin(1, 0);
@@ -125,6 +126,8 @@ export class UIScene extends Phaser.Scene {
     game.events.on(GameEvents.combo, this.onCombo, this);
     game.events.on(GameEvents.weapons, this.refreshSlots, this);
     game.events.on(GameEvents.unlock, this.onUnlock, this);
+    game.events.on(GameEvents.levelUp, this.onLevelUp, this);
+    game.events.on(DebugTools.CHANGED, this.refreshDebug, this);
 
     // 일시정지 화면
     this.pauseLayer = this.add
@@ -166,14 +169,26 @@ export class UIScene extends Phaser.Scene {
       game.events.off(GameEvents.combo, this.onCombo, this);
       game.events.off(GameEvents.weapons, this.refreshSlots, this);
       game.events.off(GameEvents.unlock, this.onUnlock, this);
+      game.events.off(GameEvents.levelUp, this.onLevelUp, this);
+      game.events.off(DebugTools.CHANGED, this.refreshDebug, this);
     });
   }
 
   update() {
-    this.fpsText?.setText(`FPS ${Math.round(this.game.loop.actualFps)}`);
+    if (debugState.enabled) this.refreshDebug();
     // 콤보 남은 시간 게이지는 매 프레임 직접 읽는다
     const combo = this.gameScene.combo;
     if (combo && combo.count > 0) this.comboFill.width = COMBO_BAR.w * combo.remainingRatio(this.gameScene.time.now);
+  }
+
+  /** 디버그 패널 갱신 (켜져 있으면 매 프레임) */
+  private refreshDebug() {
+    const on = debugState.enabled;
+    this.fpsText.setVisible(on);
+    this.debugPanel.setVisible(on);
+    if (!on) return;
+    this.fpsText.setText(`FPS ${Math.round(this.game.loop.actualFps)}`);
+    this.debugPanel.setText(DebugTools.panelLines(this.gameScene).join("\n"));
   }
 
   private createSlots() {
@@ -215,8 +230,11 @@ export class UIScene extends Phaser.Scene {
       }
       v.bg.setFillStyle(selected ? 0x1e293b : 0x0b0d12, 0.85).setStrokeStyle(selected ? 3 : 2, selected ? 0xfacc15 : 0x334155);
       v.num.setColor(selected ? "#facc15" : "#94a3b8");
-      v.name.setText(st.def.name).setColor(empty ? "#64748b" : "#ffffff");
-      v.ammo.setText(st.ammo === null ? "∞" : String(st.ammo)).setColor(empty ? "#f87171" : "#cbd5e1");
+      v.name.setText(st.level > 1 ? `${st.def.name} ${"★".repeat(st.level - 1)}` : st.def.name).setColor(empty ? "#64748b" : "#ffffff");
+      // 탄약 + 다음 레벨업 콤보 (예: "150 · ↑20")
+      const ammo = st.ammo === null ? "∞" : String(st.ammo);
+      const next = w.levelUpCombo(st);
+      v.ammo.setText(next !== null ? `${ammo} · ↑${next}` : ammo).setColor(empty ? "#f87171" : "#cbd5e1");
     });
   }
 
@@ -236,9 +254,17 @@ export class UIScene extends Phaser.Scene {
   }
 
   private onUnlock(name: string, slot: number) {
+    this.showNotice(`NEW WEAPON: ${name}!`, `${slot}번 키로 선택`, "#67e8f9");
+  }
+
+  private onLevelUp(name: string, level: number, detail: string) {
+    this.showNotice(`${name} Lv.${level}!`, `${detail} · 탄약 가득`, "#fbbf24");
+  }
+
+  private showNotice(text: string, sub: string, color: string) {
     this.tweens.killTweensOf([this.notice, this.subNotice]);
-    this.notice.setText(`NEW WEAPON: ${name}!`).setAlpha(1).setScale(0.6);
-    this.subNotice.setText(`${slot}번 키로 선택`).setAlpha(1);
+    this.notice.setText(text).setColor(color).setAlpha(1).setScale(0.6);
+    this.subNotice.setText(sub).setAlpha(1);
     this.tweens.add({ targets: this.notice, scale: 1, duration: 260, ease: "Back.out" });
     this.tweens.add({ targets: [this.notice, this.subNotice], alpha: 0, delay: 2000, duration: 400 });
   }

@@ -11,6 +11,7 @@ import {
   playerConfig,
   viewConfig,
   waveConfig,
+  weaponUpgradeConfig,
   type Explosion,
   type GunWeapon,
   type MonsterId,
@@ -34,6 +35,7 @@ import { KeyboardMouseInput } from "../input/KeyboardMouseInput";
 import type { InputSource, PlayerInput } from "../input/types";
 import { notifyGameStart } from "../portal";
 import { Combo } from "../systems/Combo";
+import { DebugTools } from "../systems/DebugTools";
 import { WaveManager } from "../systems/WaveManager";
 import { Arena } from "../world/Arena";
 import { FlowField } from "../world/FlowField";
@@ -64,6 +66,7 @@ export class GameScene extends Phaser.Scene {
   private grenades!: Grenades;
   private items!: Items;
   private effects!: Effects;
+  private debugTools!: DebugTools;
   private damageNumbers!: DamageNumbers;
   private kills = 0;
   private input1!: InputSource;
@@ -137,6 +140,17 @@ export class GameScene extends Phaser.Scene {
         sfx.play("unlock");
         this.events.emit(GameEvents.unlock, def.name, slot);
       },
+      onLevelUp: (def, level) => {
+        sfx.play("unlock");
+        const detail =
+          def.kind === "gun"
+            ? "연사·피해 강화"
+            : def.kind === "placeable" && def.placeable.type === "barricade"
+              ? "내구도 강화"
+              : "폭발 범위·피해 강화";
+        const reset = weaponUpgradeConfig.resetComboOnLevelUp ? " · 콤보 초기화" : "";
+        this.events.emit(GameEvents.levelUp, def.name, level, `${detail}${reset}`);
+      },
     });
 
     this.waves = new WaveManager({
@@ -176,14 +190,12 @@ export class GameScene extends Phaser.Scene {
       this.input1.destroy();
     });
 
-    if (debugState.enabled) {
-      // 디버그 (Phase 6에서 정리): K 그런트 50마리, N 웨이브 건너뛰기, U 전 무기 해금
-      const kb = this.input.keyboard;
-      kb?.on("keydown-K", () => {
-        for (let i = 0; i < 50; i++) this.spawnMonster("grunt");
-      });
-      kb?.on("keydown-N", () => this.debugSkipWave());
-      kb?.on("keydown-U", () => this.weapon.unlockAll());
+    // 디버그 도구 (F2, ?debug). ?debug&wave=N 이면 N웨이브부터 시작
+    debugState.usedThisRun = false;
+    this.debugTools = new DebugTools(this);
+    if (debugState.enabled && debugState.startWave > 1) {
+      this.waves.jumpTo(debugState.startWave, 1500);
+      this.weapon.unlockAll();
     }
 
     // HUD 초기값 (UIScene이 같은 프레임에 구독을 마친 뒤 받도록 다음 틱에 보냄)
@@ -556,7 +568,11 @@ export class GameScene extends Phaser.Scene {
     this.score += Math.round(def.score * this.combo.multiplier);
     this.events.emit(GameEvents.score, this.score);
     this.events.emit(GameEvents.combo, combo, this.combo.multiplier);
-    this.weapon.checkUnlocks(combo);
+    // 무기 레벨업이 일어나면 콤보 초기화 (설정)
+    if (this.weapon.checkUnlocks(combo) && weaponUpgradeConfig.resetComboOnLevelUp) {
+      this.combo.reset();
+      this.events.emit(GameEvents.combo, 0, 1);
+    }
 
     const drops = combatConfig.drops;
     const roll = Math.random();
@@ -589,11 +605,12 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(900, () => this.endGame());
   }
 
-  /** 디버그: 살아 있는 몬스터와 대기열을 모두 없애 웨이브를 바로 끝낸다 (점수 없음) */
-  private debugSkipWave() {
-    this.waves.skipWave();
+  /** 디버그: 살아 있는 몬스터와 날아가는 투사체를 모두 없앤다 (점수 없음) */
+  debugClearField() {
     this.monsters.clear();
     this.fireballs.releaseAll();
+    this.rockets.releaseAll();
+    this.grenades.clear();
   }
 
   private emitHud() {
@@ -608,6 +625,7 @@ export class GameScene extends Phaser.Scene {
     const p = this.player.sprite;
     this.arena.updateOcclusion(p.x, p.y, p.width);
     this.placeables.updateOcclusion(p.x, p.y, p.width, viewConfig.occludingWallAlpha);
+    this.debugTools.draw();
   }
 
   endGame() {
@@ -617,6 +635,7 @@ export class GameScene extends Phaser.Scene {
       wave: Math.max(1, this.waves.wave),
       bestCombo: this.combo.best,
       kills: this.kills,
+      debug: debugState.usedThisRun,
     });
   }
 

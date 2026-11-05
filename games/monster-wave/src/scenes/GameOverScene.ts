@@ -10,6 +10,8 @@ interface GameOverData {
   wave: number;
   bestCombo?: number;
   kills?: number;
+  /** 디버그를 켠 판이면 최고 점수를 저장하지 않는다 */
+  debug?: boolean;
 }
 
 export class GameOverScene extends Phaser.Scene {
@@ -22,7 +24,7 @@ export class GameOverScene extends Phaser.Scene {
     const cx = width / 2;
 
     const previousBest = storage.getBestScore();
-    const isNewBest = storage.submitScore(data.score);
+    const isNewBest = !data.debug && storage.submitScore(data.score);
 
     this.add.rectangle(0, 0, width, height, 0x0b0d12, 0.92).setOrigin(0);
     const title = this.add.text(cx, 130, "GAME OVER", textStyle(64, "#f87171", true)).setOrigin(0.5).setScale(1.4).setAlpha(0);
@@ -32,6 +34,8 @@ export class GameOverScene extends Phaser.Scene {
     if (isNewBest) {
       const badge = this.add.text(cx, 268, "NEW BEST!", textStyle(22, "#4ade80", true)).setOrigin(0.5);
       this.tweens.add({ targets: [badge, scoreText], scale: 1.08, duration: 420, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+    } else if (data.debug) {
+      this.add.text(cx, 268, "디버그 모드를 사용한 판은 최고 점수에 기록되지 않습니다", textStyle(15, "#f472b6")).setOrigin(0.5);
     } else if (previousBest > 0) {
       this.add.text(cx, 268, `최고 점수  ${previousBest.toLocaleString()}`, textStyle(18, "#94a3b8")).setOrigin(0.5);
     }

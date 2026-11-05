@@ -26,6 +26,11 @@ export class Combo {
     return false;
   }
 
+  /** 콤보를 0으로 (무기 레벨업 시) */
+  reset() {
+    this.count = 0;
+  }
+
   get multiplier(): number {
     let m = 1;
     for (const step of comboConfig.multiplierSteps) if (this.count >= step.minCombo) m = step.multiplier;

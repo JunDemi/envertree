@@ -21,8 +21,8 @@ export const waveConfig = {
   restSeconds: 5,
   /** 몬스터 종류가 처음 등장하는 웨이브에는 그 종류를 최소 이만큼 넣는다 */
   introMinCount: 2,
-  baseCount: 8,
-  countPerWave: 4,
+  baseCount: 12,
+  countPerWave: 6,
   /** 동시에 살아 있을 수 있는 최대 수 (나머지는 대기했다가 순차 등장) */
   maxAlive: 80,
   /** 스폰 간격 (ms): 첫 웨이브 값에서 웨이브마다 줄어들고 최솟값에서 멈춘다 */

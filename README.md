@@ -13,6 +13,7 @@ apps/portal/            Next.js 포털 (목록, 플레이 페이지, 로그인)
 games/_template/        Phaser 게임 템플릿 (복사해서 새 게임 시작)
 games/<slug>/           개별 게임 (Vite + TypeScript + Phaser)
 games/sample/           샘플 게임 "별 받기" (구현 설명: games/sample/README.md)
+games/monster-wave/     몬스터웨이브 (조작/설정/몬스터·무기 추가: games/monster-wave/README.md)
 packages/game-sdk/      게임 → 포털 메시지 헬퍼와 타입
 scripts/build-games.ts  게임을 빌드해 public/play 로 복사
 ```

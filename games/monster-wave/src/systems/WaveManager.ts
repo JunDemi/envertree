@@ -64,9 +64,15 @@ export class WaveManager {
     }
   }
 
-  /** 디버그: 지금 웨이브를 건너뛴다 (남은 대기열 비우기, 살아 있는 몬스터는 호출하는 쪽에서 정리) */
-  skipWave() {
+  /**
+   * 디버그: 대기열을 비우고 delayMs 뒤 targetWave를 시작한다.
+   * (살아 있는 몬스터는 호출하는 쪽에서 정리. 시작 웨이브 지정에도 사용)
+   */
+  jumpTo(targetWave: number, delayMs: number) {
     this.queue.length = 0;
+    this.wave = Math.max(0, targetWave - 1);
+    this.phase = "countdown";
+    this.countdownMs = delayMs;
   }
 
   private startWave(wave: number) {

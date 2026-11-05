@@ -24,8 +24,8 @@ const game = new Phaser.Game({
   disableContextMenu: true,
   physics: {
     default: "arcade",
-    // 디버그 모드(?debug)에서는 충돌 박스를 그린다
-    arcade: { gravity: { x: 0, y: 0 }, debug: debugState.enabled },
+    // 충돌 박스 표시는 DebugTools가 켜고 끈다 (F2 → C)
+    arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
   // 첫 번째 씬이 먼저 실행된다
   scene: [BootScene, TitleScene, GameScene, UIScene, GameOverScene],

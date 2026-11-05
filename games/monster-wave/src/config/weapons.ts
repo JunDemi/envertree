@@ -168,3 +168,32 @@ export const weapons: readonly WeaponDef[] = [
     explosion: { damage: 120, radius: 100, selfDamageRatio: 0.3 },
   },
 ];
+
+/**
+ * 무기 레벨업: 이미 연 무기는 콤보가 "unlockCombo × levelUpComboMultiplier"에 도달하면 레벨 +1 (최대 maxLevel).
+ * 레벨업하면 콤보가 0으로 초기화된다 (resetComboOnLevelUp).
+ * levelUpAfterAllUnlocked가 true면 모든 무기를 연 "다음 처치부터" 레벨업한다 (해금 우선):
+ * 그 전에 레벨업과 초기화가 일어나면 콤보 30·40에 닿지 못해 수류탄·로켓을 열 수 없게 되기 때문.
+ * 레벨마다 아래 배율이 한 번씩 곱해진다 (Lv.3 = 두 번). 권총처럼 unlockCombo가 0인 무기는 레벨업하지 않는다.
+ *
+ * 예 (배율 4): 기관단총 20, 샷건 40, 바리케이드 60, 폭발 드럼통 80, 수류탄 120, 로켓 160
+ */
+export const weaponUpgradeConfig = {
+  maxLevel: 3,
+  /** 레벨업에 필요한 콤보 = 해금 콤보 × 이 값 */
+  levelUpComboMultiplier: 4,
+  /** 레벨업하면 콤보를 0으로 초기화 */
+  resetComboOnLevelUp: true,
+  /** 모든 무기를 연 뒤에만 레벨업 (해금 우선) */
+  levelUpAfterAllUnlocked: true,
+  /** 레벨업할 때 탄약을 최대치까지 채움 */
+  refillAmmo: true,
+  gun: {
+    /** 발사 간격 배율 (작을수록 빠름) */
+    fireIntervalMul: 0.9,
+    damageMul: 1.15,
+  },
+  barricade: { maxHpMul: 1.25 },
+  /** 드럼통, 수류탄, 로켓 폭발 */
+  explosion: { radiusMul: 1.1, damageMul: 1.1 },
+} as const;
