@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import { aiConfig, combatConfig, type MonsterDef } from "../config";
 import { moveWithWalls } from "../world/collide";
+import { hasLineOfSight } from "../world/los";
 import type { FlowField } from "../world/FlowField";
 import type { Grid } from "../world/Grid";
 import { SpatialHash } from "../world/SpatialHash";
@@ -19,6 +20,8 @@ export class MonsterManager {
   readonly hash = new SpatialHash<Monster>(aiConfig.spatialCellSize);
   private readonly nearby: Monster[] = [];
   private readonly moved = { x: 0, y: 0 };
+  /** 원거리 몬스터가 발사할 때 호출 (GameScene이 투사체를 만든다) */
+  onRangedAttack: ((m: Monster) => void) | null = null;
 
   constructor(scene: Phaser.Scene, grid: Grid, flow: FlowField) {
     this.scene = scene;
@@ -61,6 +64,7 @@ export class MonsterManager {
     for (const m of this.alive) this.hash.insert(m);
 
     const directDist = aiConfig.directChaseTiles * t;
+    const now = this.scene.time.now;
     for (const m of this.alive) {
       const { w, d } = m.def.footprint;
       // 발자국 가운데 기준으로 방향 계산
@@ -73,7 +77,28 @@ export class MonsterManager {
       const col = Math.floor(m.x / t);
       const row = Math.floor(cy / t);
 
-      if (distToTarget < directDist || flow.distanceAt(col, row) === Infinity) {
+      // 원거리 몬스터: 사거리 안이고 시야가 트였으면 멈춰서 쏜다
+      let holding = false;
+      const ranged = m.def.ranged;
+      if (ranged && distToTarget <= ranged.preferredDistance) {
+        if (now >= m.losCheckAt) {
+          m.hasLos = hasLineOfSight(grid, m.x, cy, targetX, targetY - 7);
+          m.losCheckAt = now + 200;
+        }
+        if (m.hasLos) {
+          holding = true;
+          // 사거리에 처음 들어오면 약간의 무작위 지연 후 첫 발 (여러 마리가 동시에 쏘지 않게)
+          if (m.nextAttackAt === 0) m.nextAttackAt = now + 300 + Math.random() * 600;
+          if (now >= m.nextAttackAt) {
+            m.nextAttackAt = now + ranged.fireIntervalMs;
+            this.onRangedAttack?.(m);
+          }
+        }
+      }
+
+      if (holding) {
+        // 제자리 (밀어내기만 적용)
+      } else if (distToTarget < directDist || flow.distanceAt(col, row) === Infinity) {
         // 가까우면(또는 길이 없으면) 직진
         if (distToTarget > 0.001) {
           dirX = toX / distToTarget;
@@ -152,16 +177,15 @@ export class MonsterManager {
       m.pushY *= decay;
     }
 
-    const now = this.scene.time.now;
     for (const m of this.alive) m.syncView(now);
   }
 
-  /** (x, y) 지점(지면)에 닿은 몬스터. 없으면 null */
-  hitTest(x: number, y: number): Monster | null {
+  /** (x, y) 지점(지면)에 닿은 몬스터. ignore는 제외 (투사체를 쏜 몬스터). 없으면 null */
+  hitTest(x: number, y: number, ignore: Monster | null = null): Monster | null {
     const pad = combatConfig.bulletHitPadding;
     this.hash.query(x, y, 48, this.nearby);
     for (const m of this.nearby) {
-      if (!m.active) continue;
+      if (!m.active || m === ignore) continue;
       const { w, d } = m.def.footprint;
       if (x >= m.x - w / 2 - pad && x <= m.x + w / 2 + pad && y >= m.y - d - pad && y <= m.y + pad) return m;
     }

@@ -14,6 +14,21 @@ export const arenaConfig = {
   /** 플레이어 시작 타일 (중앙) */
   playerStart: { col: 24, row: 18 },
 
+  /**
+   * 몬스터 스폰 지점 (바깥벽 바로 안쪽, 네 변에 3개씩).
+   * 플레이어 화면 안에 보이는 지점은 사용하지 않는다 (waves.ts의 spawnOffscreenMargin).
+   */
+  spawnPoints: [
+    // 위
+    { col: 12, row: 1 }, { col: 24, row: 1 }, { col: 36, row: 1 },
+    // 아래
+    { col: 12, row: 34 }, { col: 24, row: 34 }, { col: 36, row: 34 },
+    // 왼쪽
+    { col: 1, row: 10 }, { col: 1, row: 18 }, { col: 1, row: 26 },
+    // 오른쪽
+    { col: 46, row: 10 }, { col: 46, row: 18 }, { col: 46, row: 26 },
+  ],
+
   obstacles: [
     // 중앙을 둘러싼 기둥 4개 (2×2)
     { col: 15, row: 11, w: 2, h: 2 },

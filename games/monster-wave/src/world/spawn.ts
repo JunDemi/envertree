@@ -1,31 +1,40 @@
 import type Phaser from "phaser";
+import { arenaConfig } from "../config";
 import type { Grid } from "./Grid";
 
 /**
- * 스폰 위치 고르기: 아레나 가장자리 띠(바깥벽 안쪽 edgeBand칸) 안의 빈 칸 중에서
- * 카메라 화면(+margin) 밖에 있는 칸을 무작위로 고른다. 없으면 null.
- * (Phase 3에서 사방 스폰 지점 방식으로 확장)
+ * 스폰 지점 고르기 (config/arena.ts의 spawnPoints).
+ * 카메라 화면(+margin) 밖에 있는 지점 중 무작위로 고른다.
+ * 모두 화면 안이면 플레이어에게서 가장 먼 지점을 쓴다.
+ * 몬스터끼리 완전히 겹치지 않게 칸 안에서 약간 흩뿌린다.
  */
 export function pickSpawnPoint(
   grid: Grid,
   view: Phaser.Geom.Rectangle,
   margin: number,
-  edgeBand = 3,
+  playerX: number,
+  playerY: number,
 ): { x: number; y: number } | null {
-  const candidates: { col: number; row: number }[] = [];
-  for (let r = 1; r < grid.rows - 1; r++) {
-    for (let c = 1; c < grid.cols - 1; c++) {
-      const nearEdge = c <= edgeBand || r <= edgeBand || c >= grid.cols - 1 - edgeBand || r >= grid.rows - 1 - edgeBand;
-      if (!nearEdge || grid.isBlocked(c, r)) continue;
-      const { x, y } = grid.tileCenter(c, r);
-      const onScreen =
-        x > view.x - margin && x < view.right + margin && y > view.y - margin && y < view.bottom + margin;
-      if (!onScreen) candidates.push({ col: c, row: r });
-    }
+  const open = arenaConfig.spawnPoints.filter((p) => !grid.isBlocked(p.col, p.row));
+  if (open.length === 0) return null;
+
+  const offscreen = open.filter((p) => {
+    const { x, y } = grid.tileCenter(p.col, p.row);
+    return x < view.x - margin || x > view.right + margin || y < view.y - margin || y > view.bottom + margin;
+  });
+
+  let pick;
+  if (offscreen.length > 0) {
+    pick = offscreen[Math.floor(Math.random() * offscreen.length)];
+  } else {
+    pick = open.reduce((far, p) => {
+      const a = grid.tileCenter(p.col, p.row);
+      const b = grid.tileCenter(far.col, far.row);
+      return Math.hypot(a.x - playerX, a.y - playerY) > Math.hypot(b.x - playerX, b.y - playerY) ? p : far;
+    });
   }
-  if (candidates.length === 0) return null;
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  const center = grid.tileCenter(pick.col, pick.row);
-  // 발밑 기준점: 칸 가운데보다 약간 아래
-  return { x: center.x, y: center.y + 8 };
+
+  const c = grid.tileCenter(pick.col, pick.row);
+  const jitter = grid.tile * 0.3;
+  return { x: c.x + (Math.random() - 0.5) * jitter, y: c.y + 10 + (Math.random() - 0.5) * jitter };
 }

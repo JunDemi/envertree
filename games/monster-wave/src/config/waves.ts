@@ -11,11 +11,16 @@ export interface WaveMonsterEntry {
 
 /**
  * 웨이브 구성 규칙. 웨이브 n의 몬스터 수 = baseCount + countPerWave × (n − 1).
- * 특정 웨이브만 따로 정하고 싶으면 overrides를 쓴다 (Phase 3에서 구현).
+ * 종류는 composition에서 해당 웨이브에 등장 가능한 것들 중 weight 비율로 무작위로 고른다.
+ * 특정 웨이브만 따로 정하고 싶으면 overrides에 { count, composition }을 넣는다.
  */
 export const waveConfig = {
+  /** 게임 시작 후 첫 웨이브까지 대기 (초) */
+  firstWaveDelaySeconds: 3,
   /** 웨이브 사이 휴식 (초) */
   restSeconds: 5,
+  /** 몬스터 종류가 처음 등장하는 웨이브에는 그 종류를 최소 이만큼 넣는다 */
+  introMinCount: 2,
   baseCount: 8,
   countPerWave: 4,
   /** 동시에 살아 있을 수 있는 최대 수 (나머지는 대기했다가 순차 등장) */

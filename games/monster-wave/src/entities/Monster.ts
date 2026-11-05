@@ -21,6 +21,11 @@ export class Monster {
   pushX = 0;
   pushY = 0;
   private flashUntil = 0;
+  /** 원거리 공격: 다음 발사 가능 시각 (0 = 아직 사거리에 들어온 적 없음) */
+  nextAttackAt = 0;
+  /** 원거리 공격: 시야 확인 캐시 */
+  losCheckAt = 0;
+  hasLos = false;
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, TEX.shadow).setAlpha(0.35).setVisible(false);
@@ -38,6 +43,9 @@ export class Monster {
     this.pushX = 0;
     this.pushY = 0;
     this.flashUntil = 0;
+    this.nextAttackAt = 0;
+    this.losCheckAt = 0;
+    this.hasLos = false;
     this.sprite.setTexture(monsterTexture(def.id)).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
     this.sprite.setVisible(true);
     sizeShadow(this.shadow, def.footprint);

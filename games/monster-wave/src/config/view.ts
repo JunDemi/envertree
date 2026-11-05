@@ -27,6 +27,8 @@ export const viewConfig = {
 
   /** 총을 드는 높이 (발밑에서 위로 px). 조준 기준점과 총 그림 위치에 쓴다 */
   gunHeight: 16,
+  /** 화염구가 날아가는 높이 (발밑에서 위로 px) */
+  fireballHeight: 14,
   /** 카메라가 비추는 지점: 발밑보다 이만큼 위 (캐릭터 몸통 가운데쯤) */
   cameraFocusHeight: 20,
 

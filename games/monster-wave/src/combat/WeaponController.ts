@@ -27,7 +27,7 @@ export class WeaponController {
       // 여러 발이면 부채꼴로 고르게, 한 발이면 퍼짐 범위 안에서 무작위
       const offset =
         w.pellets > 1 ? -spread / 2 + (spread * i) / (w.pellets - 1) + (Math.random() - 0.5) * (spread / w.pellets) : (Math.random() - 0.5) * spread;
-      this.bullets.fire(x, y, angle + offset, w.bulletSpeed, w.range, w.damage, w.knockback);
+      this.bullets.fire({ x, y, angle: angle + offset, speed: w.bulletSpeed, range: w.range, damage: w.damage, knockback: w.knockback });
     }
   }
 }

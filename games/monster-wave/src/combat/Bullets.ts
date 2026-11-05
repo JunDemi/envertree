@@ -1,8 +1,7 @@
 import Phaser from "phaser";
-import { viewConfig } from "../config";
-import { TEX } from "../assets/keys";
+import type { Monster } from "../entities/Monster";
 
-/** 날아가는 총알 하나 (풀에서 재사용) */
+/** 날아가는 투사체 하나 (풀에서 재사용) */
 export interface Bullet {
   active: boolean;
   /** 지면 좌표 (충돌 판정 기준) */
@@ -14,48 +13,74 @@ export interface Bullet {
   range: number;
   damage: number;
   knockback: number;
+  /** 쏜 몬스터 (몬스터 투사체일 때). 자기 자신은 맞지 않는다 */
+  owner: Monster | null;
   image: Phaser.GameObjects.Image;
 }
 
+export interface FireOptions {
+  x: number;
+  y: number;
+  angle: number;
+  speed: number;
+  range: number;
+  damage: number;
+  knockback?: number;
+  owner?: Monster | null;
+}
+
 /**
- * 총알 풀. 총알은 지면 좌표로 움직이고, 그림은 총 높이만큼 위에 그린다.
- * 충돌 판정은 GameScene이 매 프레임 forEachActive로 처리한다.
+ * 투사체 풀 (플레이어 총알, 임프 화염구 등 종류별로 하나씩).
+ * 투사체는 지면 좌표로 움직이고, 그림은 height만큼 위에 그린다.
+ * 충돌 판정은 GameScene이 update의 onStep 콜백으로 처리한다.
  */
 export class Bullets {
   private readonly scene: Phaser.Scene;
-  private readonly items: Bullet[] = [];
+  private readonly texture: string;
+  private readonly height: number;
+  private readonly rotate: boolean;
+  readonly items: Bullet[] = [];
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, texture: string, height: number, rotate = true) {
     this.scene = scene;
+    this.texture = texture;
+    this.height = height;
+    this.rotate = rotate;
   }
 
-  fire(x: number, y: number, angle: number, speed: number, range: number, damage: number, knockback: number) {
+  fire(o: FireOptions) {
     let b = this.items.find((it) => !it.active);
     if (!b) {
       b = {
-        active: false, x: 0, y: 0, vx: 0, vy: 0, range: 0, damage: 0, knockback: 0,
-        image: this.scene.add.image(0, 0, TEX.bullet),
+        active: false, x: 0, y: 0, vx: 0, vy: 0, range: 0, damage: 0, knockback: 0, owner: null,
+        image: this.scene.add.image(0, 0, this.texture),
       };
       this.items.push(b);
     }
     b.active = true;
-    b.x = x;
-    b.y = y;
-    b.vx = Math.cos(angle) * speed;
-    b.vy = Math.sin(angle) * speed;
-    b.range = range;
-    b.damage = damage;
-    b.knockback = knockback;
-    b.image.setVisible(true).setRotation(angle);
+    b.x = o.x;
+    b.y = o.y;
+    b.vx = Math.cos(o.angle) * o.speed;
+    b.vy = Math.sin(o.angle) * o.speed;
+    b.range = o.range;
+    b.damage = o.damage;
+    b.knockback = o.knockback ?? 0;
+    b.owner = o.owner ?? null;
+    b.image.setVisible(true).setRotation(this.rotate ? o.angle : 0);
     this.sync(b);
   }
 
   release(b: Bullet) {
     b.active = false;
+    b.owner = null;
     b.image.setVisible(false);
   }
 
-  /** 이동 후 각 총알에 대해 onStep 호출. onStep이 false를 돌려주면 총알 제거 */
+  releaseAll() {
+    for (const b of this.items) if (b.active) this.release(b);
+  }
+
+  /** 이동 후 각 투사체에 대해 onStep 호출. onStep이 false를 돌려주면 제거 */
   update(dt: number, onStep: (b: Bullet) => boolean) {
     for (const b of this.items) {
       if (!b.active) continue;
@@ -79,6 +104,6 @@ export class Bullets {
   }
 
   private sync(b: Bullet) {
-    b.image.setPosition(b.x, b.y - viewConfig.gunHeight).setDepth(b.y);
+    b.image.setPosition(b.x, b.y - this.height).setDepth(b.y);
   }
 }

@@ -18,6 +18,9 @@ export class UIScene extends Phaser.Scene {
   private hpText!: Phaser.GameObjects.Text;
   private scoreText!: Phaser.GameObjects.Text;
   private monstersText!: Phaser.GameObjects.Text;
+  private waveText!: Phaser.GameObjects.Text;
+  private banner!: Phaser.GameObjects.Text;
+  private subBanner!: Phaser.GameObjects.Text;
   private fpsText?: Phaser.GameObjects.Text;
 
   constructor() {
@@ -35,25 +38,32 @@ export class UIScene extends Phaser.Scene {
       .text(HP_BAR.x + HP_BAR.w / 2, HP_BAR.y + HP_BAR.h / 2, "", textStyle(12, "#ffffff", true))
       .setOrigin(0.5);
 
-    this.add.text(width / 2, 12, "WAVE 1", textStyle(22, "#facc15", true)).setOrigin(0.5, 0);
+    this.waveText = this.add.text(width / 2, 12, "", textStyle(22, "#facc15", true)).setOrigin(0.5, 0);
+    // 화면 가운데 알림 (웨이브 시작/클리어, 카운트다운)
+    this.banner = this.add.text(width / 2, height * 0.3, "", textStyle(52, "#ffffff", true)).setOrigin(0.5).setAlpha(0);
+    this.subBanner = this.add.text(width / 2, height * 0.3 + 50, "", textStyle(20, "#e2e8f0")).setOrigin(0.5).setAlpha(0);
     this.scoreText = this.add.text(width - 16, 12, "", textStyle(20, "#ffffff", true)).setOrigin(1, 0);
     this.monstersText = this.add.text(width - 16, 40, "", textStyle(15, "#cbd5e1")).setOrigin(1, 0);
     this.add
-      .text(width / 2, height - 16, "Phase 2 — WASD 이동 · 마우스 조준 · 클릭 사격 · ESC/P 일시정지", textStyle(14, "#94a3b8"))
+      .text(width / 2, height - 16, "WASD 이동 · 마우스 조준 · 클릭 사격 · ESC/P 일시정지", textStyle(14, "#94a3b8"))
       .setOrigin(0.5, 1);
     if (debugState.enabled) {
-      this.add.text(16, height - 16, "DEBUG  K: 그런트 +50", textStyle(14, "#f472b6", true)).setOrigin(0, 1);
+      this.add.text(16, height - 16, "DEBUG  K: 그런트 +50  N: 웨이브 건너뛰기", textStyle(14, "#f472b6", true)).setOrigin(0, 1);
       this.fpsText = this.add.text(16, 40, "", textStyle(14, "#f472b6"));
     }
     this.setHp(playerConfig.maxHp, playerConfig.maxHp);
     this.setScore(0);
     this.setMonsters(0);
+    this.setWave(0);
 
     // GameScene 이벤트 구독
     const game = this.scene.get(SCENES.game);
     game.events.on(GameEvents.hp, this.setHp, this);
     game.events.on(GameEvents.score, this.setScore, this);
     game.events.on(GameEvents.monsters, this.setMonsters, this);
+    game.events.on(GameEvents.waveStart, this.onWaveStart, this);
+    game.events.on(GameEvents.waveClear, this.onWaveClear, this);
+    game.events.on(GameEvents.countdown, this.onCountdown, this);
 
     // 일시정지 화면
     this.pauseLayer = this.add
@@ -81,6 +91,9 @@ export class UIScene extends Phaser.Scene {
       game.events.off(GameEvents.hp, this.setHp, this);
       game.events.off(GameEvents.score, this.setScore, this);
       game.events.off(GameEvents.monsters, this.setMonsters, this);
+      game.events.off(GameEvents.waveStart, this.onWaveStart, this);
+      game.events.off(GameEvents.waveClear, this.onWaveClear, this);
+      game.events.off(GameEvents.countdown, this.onCountdown, this);
     });
   }
 
@@ -99,8 +112,34 @@ export class UIScene extends Phaser.Scene {
     this.scoreText.setText(`점수 ${score.toLocaleString()}`);
   }
 
-  private setMonsters(alive: number) {
-    this.monstersText.setText(`몬스터 ${alive}`);
+  private setMonsters(remaining: number) {
+    this.monstersText.setText(`남은 몬스터 ${remaining}`);
+  }
+
+  private setWave(wave: number) {
+    this.waveText.setText(wave > 0 ? `WAVE ${wave}` : "준비");
+  }
+
+  private onWaveStart(wave: number) {
+    this.setWave(wave);
+    this.showBanner(`WAVE ${wave}`, "몬스터가 몰려온다!", "#facc15", 1600);
+  }
+
+  private onWaveClear(wave: number) {
+    this.showBanner(`WAVE ${wave} 클리어`, "", "#4ade80", 1400);
+  }
+
+  /** 다음 웨이브까지 카운트다운 (마지막 3초만 크게 표시) */
+  private onCountdown(seconds: number, nextWave: number) {
+    if (seconds <= 3) this.showBanner(String(seconds), `WAVE ${nextWave} 시작까지`, "#ffffff", 900);
+  }
+
+  private showBanner(text: string, sub: string, color: string, durationMs: number) {
+    this.tweens.killTweensOf([this.banner, this.subBanner]);
+    this.banner.setText(text).setColor(color).setAlpha(1).setScale(1.25);
+    this.subBanner.setText(sub).setAlpha(sub ? 1 : 0);
+    this.tweens.add({ targets: this.banner, scale: 1, duration: 180, ease: "Back.out" });
+    this.tweens.add({ targets: [this.banner, this.subBanner], alpha: 0, delay: durationMs - 300, duration: 300 });
   }
 
   private onBlur() {

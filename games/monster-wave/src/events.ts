@@ -7,6 +7,12 @@ export const GameEvents = {
   hp: "hud-hp",
   /** (score: number) */
   score: "hud-score",
-  /** (alive: number) 살아 있는 몬스터 수 */
+  /** (remaining: number) 이번 웨이브에 남은 몬스터 (아직 안 나온 수 + 살아 있는 수) */
   monsters: "hud-monsters",
+  /** (wave: number) 웨이브 시작 */
+  waveStart: "hud-wave-start",
+  /** (wave: number) 웨이브 클리어 */
+  waveClear: "hud-wave-clear",
+  /** (seconds: number, nextWave: number) 다음 웨이브까지 남은 초 (정수가 바뀔 때마다) */
+  countdown: "hud-countdown",
 } as const;

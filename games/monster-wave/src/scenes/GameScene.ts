@@ -7,11 +7,13 @@ import {
   combatConfig,
   debugState,
   gameConfig,
-  monsters,
+  monsters as monsterDefs,
   playerConfig,
   viewConfig,
   waveConfig,
+  type MonsterId,
 } from "../config";
+import { TEX } from "../assets/keys";
 import { Bullets, type Bullet } from "../combat/Bullets";
 import { WeaponController } from "../combat/WeaponController";
 import { Effects } from "../effects/Effects";
@@ -25,11 +27,13 @@ import { notifyGameStart } from "../portal";
 import { Arena } from "../world/Arena";
 import { FlowField } from "../world/FlowField";
 import { pickSpawnPoint } from "../world/spawn";
+import { WaveManager } from "../systems/WaveManager";
 import { SCENES } from "./keys";
 
 /**
  * 게임 화면.
- * Phase 2: 권총 사격, 그런트(플로우 필드 추적), 접촉 피해와 무적, 사망과 게임오버.
+ * Phase 2: 권총 사격, 플로우 필드 추적, 접촉 피해와 무적, 사망과 게임오버.
+ * Phase 3: 웨이브 진행, 몬스터 4종, 임프 화염구(다른 몬스터에게도 피해).
  * 일시정지와 HUD는 위에 겹쳐 실행되는 UIScene이 담당한다.
  */
 export class GameScene extends Phaser.Scene {
@@ -39,16 +43,18 @@ export class GameScene extends Phaser.Scene {
   monsters!: MonsterManager;
   flow!: FlowField;
   private bullets!: Bullets;
+  private fireballs!: Bullets;
+  waves!: WaveManager;
   private weapon!: WeaponController;
   private effects!: Effects;
   private input1!: InputSource;
   private score = 0;
-  private wave = 1;
   private flowTimer = 0;
   private flowCol = -1;
   private flowRow = -1;
-  private spawnTimer = 0;
   private ending = false;
+  private lastRemaining = -1;
+  private lastCountdown = -1;
   private readonly touching: Monster[] = [];
 
   constructor() {
@@ -57,18 +63,26 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     this.score = 0;
-    this.wave = 1;
     this.flowTimer = 0;
     this.flowCol = -1;
     this.flowRow = -1;
-    this.spawnTimer = 0;
     this.ending = false;
+    this.lastRemaining = -1;
+    this.lastCountdown = -1;
 
     this.arena = new Arena(this);
     this.flow = new FlowField(this.arena.grid);
     this.monsters = new MonsterManager(this, this.arena.grid, this.flow);
-    this.bullets = new Bullets(this);
+    this.bullets = new Bullets(this, TEX.bullet, viewConfig.gunHeight);
+    this.fireballs = new Bullets(this, TEX.fireball, viewConfig.fireballHeight, false);
     this.weapon = new WeaponController(this.bullets);
+    this.monsters.onRangedAttack = (m) => this.fireFireball(m);
+    this.waves = new WaveManager({
+      spawn: (id, hpScale, speedScale) => this.spawnMonster(id, hpScale, speedScale),
+      aliveCount: () => this.monsters.alive.length,
+      onWaveStart: (wave) => this.events.emit(GameEvents.waveStart, wave),
+      onWaveClear: (wave) => this.events.emit(GameEvents.waveClear, wave),
+    });
     this.effects = new Effects(this);
 
     const start = this.arena.grid.tileCenter(arenaConfig.playerStart.col, arenaConfig.playerStart.row);
@@ -96,10 +110,11 @@ export class GameScene extends Phaser.Scene {
     });
 
     if (debugState.enabled) {
-      // 디버그: K = 그런트 50마리 추가 (성능 확인용, Phase 6에서 정리)
+      // 디버그 (Phase 6에서 정리): K = 그런트 50마리 추가, N = 웨이브 건너뛰기
       this.input.keyboard?.on("keydown-K", () => {
-        for (let i = 0; i < 50; i++) this.spawnMonster();
+        for (let i = 0; i < 50; i++) this.spawnMonster("grunt");
       });
+      this.input.keyboard?.on("keydown-N", () => this.debugSkipWave());
     }
 
     // HUD 초기값 (UIScene이 같은 프레임에 구독을 마친 뒤 받도록 다음 틱에 보냄)
@@ -124,8 +139,24 @@ export class GameScene extends Phaser.Scene {
     // 몬스터는 플레이어 발자국 가운데를 향한다
     this.monsters.update(dt, this.player.x, this.player.y, playerConfig.footprint.w);
     this.bullets.update(dt, (b) => this.bulletStep(b, now));
+    this.fireballs.update(dt, (b) => this.fireballStep(b, now));
     this.checkContactDamage();
-    this.updateSpawner(deltaMs);
+    this.updateWaves(deltaMs);
+  }
+
+  private updateWaves(deltaMs: number) {
+    const w = this.waves;
+    w.update(deltaMs);
+    const remaining = w.remaining;
+    if (remaining !== this.lastRemaining) {
+      this.lastRemaining = remaining;
+      this.events.emit(GameEvents.monsters, remaining);
+    }
+    const countdown = w.phase === "countdown" ? Math.ceil(w.countdownMs / 1000) : -1;
+    if (countdown !== this.lastCountdown) {
+      this.lastCountdown = countdown;
+      if (countdown > 0) this.events.emit(GameEvents.countdown, countdown, w.wave + 1);
+    }
   }
 
   /** 플레이어가 다른 칸으로 옮겼거나 일정 시간이 지났으면 플로우 필드 재계산 */
@@ -158,11 +189,13 @@ export class GameScene extends Phaser.Scene {
 
   private killMonster(m: Monster) {
     const { def } = m;
+    // 이 몬스터가 쏜 화염구가 날아가는 중이면 owner 연결을 끊는다.
+    // (풀로 돌아간 몬스터 객체가 다른 몬스터로 재사용되면 그 몬스터가 화염구에 안 맞게 되므로)
+    for (const b of this.fireballs.items) if (b.owner === m) b.owner = null;
     this.effects.burst(m.x, m.y - def.height / 2, def.color);
     this.monsters.kill(m);
     this.score += def.score;
     this.events.emit(GameEvents.score, this.score);
-    this.events.emit(GameEvents.monsters, this.monsters.alive.length);
   }
 
   private checkContactDamage() {
@@ -193,23 +226,71 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * 임시 스폰 (Phase 2): 그런트를 waveConfig.baseCount 마리 유지한다.
-   * Phase 3에서 웨이브 시스템으로 교체한다.
-   */
-  private updateSpawner(deltaMs: number) {
-    this.spawnTimer -= deltaMs;
-    if (this.spawnTimer > 0 || this.monsters.alive.length >= waveConfig.baseCount) return;
-    this.spawnTimer = waveConfig.spawnIntervalMs;
-    this.spawnMonster();
+  /** 임프 화염구: 플레이어 쪽으로 발사 */
+  private fireFireball(m: Monster) {
+    const ranged = m.def.ranged;
+    if (!ranged) return;
+    const sx = m.x;
+    const sy = m.y - m.def.footprint.d / 2;
+    const tx = this.player.x;
+    const ty = this.player.y - playerConfig.footprint.d / 2;
+    this.fireballs.fire({
+      x: sx,
+      y: sy,
+      angle: Math.atan2(ty - sy, tx - sx),
+      speed: ranged.projectileSpeed,
+      range: ranged.preferredDistance * 2.5,
+      damage: ranged.damage,
+      owner: m,
+    });
   }
 
-  private spawnMonster() {
+  /** 화염구 한 발 처리: 벽, 플레이어, (friendlyFire면) 다른 몬스터 */
+  private fireballStep(b: Bullet, now: number): boolean {
+    const grid = this.arena.grid;
+    const { col, row } = grid.worldToTile(b.x, b.y);
+    if (grid.isBlocked(col, row)) return false;
+
+    const p = this.player;
+    if (!p.dead) {
+      const reach = playerConfig.footprint.w / 2 + 6;
+      if (Math.hypot(b.x - p.x, b.y - (p.y - playerConfig.footprint.d / 2)) < reach) {
+        if (p.takeDamage(b.damage)) {
+          const speed = Math.hypot(b.vx, b.vy) || 1;
+          p.knockback(b.vx / speed, b.vy / speed, playerConfig.contactKnockback * 0.6);
+          this.cameras.main.shake(120, 0.006);
+          this.events.emit(GameEvents.hp, p.hp, playerConfig.maxHp);
+          if (p.dead) this.onPlayerDead();
+        }
+        return false;
+      }
+    }
+
+    const friendlyFire = b.owner?.def.ranged?.friendlyFire ?? monsterDefs.imp.ranged?.friendlyFire ?? true;
+    if (friendlyFire) {
+      const target = this.monsters.hitTest(b.x, b.y, b.owner);
+      if (target) {
+        if (target.damage(b.damage, now)) this.killMonster(target);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** 스폰 지점에 몬스터 하나. 자리가 없으면 false */
+  spawnMonster(id: MonsterId, hpScale = 1, speedScale = 1): boolean {
     const view = this.cameras.main.worldView;
-    const point = pickSpawnPoint(this.arena.grid, view, waveConfig.spawnOffscreenMargin);
-    if (!point) return;
-    this.monsters.spawn(monsters.grunt, point.x, point.y);
-    this.events.emit(GameEvents.monsters, this.monsters.alive.length);
+    const point = pickSpawnPoint(this.arena.grid, view, waveConfig.spawnOffscreenMargin, this.player.x, this.player.y);
+    if (!point) return false;
+    this.monsters.spawn(monsterDefs[id], point.x, point.y, hpScale, speedScale);
+    return true;
+  }
+
+  /** 디버그: 살아 있는 몬스터와 대기열을 모두 없애 웨이브를 바로 끝낸다 (점수 없음) */
+  private debugSkipWave() {
+    this.waves.skipWave();
+    this.monsters.clear();
+    this.fireballs.releaseAll();
   }
 
   private onPlayerDead() {
@@ -223,7 +304,6 @@ export class GameScene extends Phaser.Scene {
   private emitHud() {
     this.events.emit(GameEvents.hp, this.player.hp, playerConfig.maxHp);
     this.events.emit(GameEvents.score, this.score);
-    this.events.emit(GameEvents.monsters, this.monsters.alive.length);
   }
 
   /** 물리 계산이 끝난 뒤 그림 위치/depth를 맞춘다 */
@@ -235,7 +315,7 @@ export class GameScene extends Phaser.Scene {
 
   endGame() {
     this.scene.stop(SCENES.ui);
-    this.scene.start(SCENES.gameOver, { score: this.score, wave: this.wave });
+    this.scene.start(SCENES.gameOver, { score: this.score, wave: Math.max(1, this.waves.wave) });
   }
 
   toTitle() {
