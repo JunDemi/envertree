@@ -1,9 +1,10 @@
 import Phaser from "phaser";
-import { debugState, playerConfig, viewConfig } from "../config";
+import { debugState, playerConfig, viewConfig, type WeaponId } from "../config";
 import { TEX, playerTexture, type Facing, type PlayerPose } from "../assets/keys";
 import type { PlayerInput } from "../input/types";
 import { addShadow, placeShadow } from "../view/depth";
 import { facingFromVector } from "../view/facing";
+import { heldWeaponArt } from "../view/heldWeapon";
 
 /**
  * 플레이어. 물리 몸체는 발자국(footprint) 크기이고, 그림은 그 위로 솟아 있다.
@@ -24,6 +25,8 @@ export class Player {
   private pushY = 0;
   /** 걷기 애니메이션: 걷기 시작부터 흐른 시간 (ms). 멈추면 0 */
   private walkMs = 0;
+  /** 지금 손에 든 무기 (그림이 바뀔 때만 갱신) */
+  private weaponId: WeaponId | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     const { w, d } = playerConfig.footprint;
@@ -93,6 +96,19 @@ export class Player {
     // (총알은 발자국 가운데에서 출발해 gunHeight 높이로 그려지므로 같은 기준점을 쓴다)
     const gunY = this.y - playerConfig.footprint.d / 2 - viewConfig.gunHeight;
     this.aimAngle = Math.atan2(input.aimY - gunY, input.aimX - this.x);
+  }
+
+  /** 손에 든 무기 그림을 바꾼다. 설치물은 손에 아무것도 들지 않는다 */
+  setWeapon(id: WeaponId) {
+    if (id === this.weaponId) return;
+    this.weaponId = id;
+    const art = heldWeaponArt(this.sprite.scene, id);
+    if (!art) {
+      this.gun.setVisible(false);
+      return;
+    }
+    this.gun.setTexture(art.key).setOrigin(art.originX, art.originY).setVisible(true);
+    this.gun.setScale(art.width / this.gun.frame.width);
   }
 
   /** 물리 이동이 끝난 뒤 그림을 맞춘다 (scene의 update 끝에서 호출) */

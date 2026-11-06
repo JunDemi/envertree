@@ -67,6 +67,8 @@ export interface WeaponHandlers {
   onFired(def: WeaponDef): void;
   /** 무기 목록/탄약/선택이 바뀜 (HUD 갱신용) */
   onChanged(): void;
+  /** 탄약이 떨어져 권총으로 자동 전환됨 (사격 버튼을 뗄 때까지 쏘지 않게 한다) */
+  onAutoSwitched(): void;
   /** 새 무기 해금 */
   onUnlocked(def: WeaponDef, slot: number): void;
   /** 무기 레벨업 */
@@ -140,8 +142,12 @@ export class WeaponController {
     this.h.onFired(def);
     if (st.ammo !== null) {
       st.ammo -= 1;
-      // 탄약이 떨어지면 권총(1번)으로 자동 전환
-      if (st.ammo <= 0) this.currentIndex = 0;
+      // 탄약이 떨어지면 권총(1번)으로 자동 전환.
+      // 버튼을 누른 채로 있으면 권총이 바로 발사되어 방금 설치한 드럼통을 쏘게 되므로, 버튼을 뗄 때까지 쏘지 않는다
+      if (st.ammo <= 0) {
+        this.currentIndex = 0;
+        this.h.onAutoSwitched();
+      }
       this.h.onChanged();
     }
   }

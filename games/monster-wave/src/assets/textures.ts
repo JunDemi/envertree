@@ -15,6 +15,8 @@ import { FACINGS, TEX, monsterTexture, type Facing } from "./keys";
 export function generateTextures(scene: Phaser.Scene) {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
   const bake = (key: string, w: number, h: number, draw: () => void) => {
+    // 같은 이름의 실제 그림을 불러왔으면 그것을 쓴다 (코드 그림은 대체용)
+    if (scene.textures.exists(key)) return;
     g.clear();
     draw();
     g.generateTexture(key, w, h);

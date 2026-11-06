@@ -1,4 +1,4 @@
-import type { MonsterId } from "../config";
+import type { MonsterId, WeaponId } from "../config";
 
 /**
  * 텍스처 키. 지금은 BootScene이 코드로 그려서 만들지만,
@@ -42,6 +42,11 @@ export type PlayerPose = "stand" | "walk" | "walk2";
 /** 플레이어. 조준 방향과 동작에 따라 바꿔 쓴다 */
 export function playerTexture(facing: Facing = "down", pose: PlayerPose = "stand"): string {
   return `player-${pose}-${facing}`;
+}
+
+/** 손에 든 무기 그림 (총 종류만. 없으면 TEX.gun을 쓴다) */
+export function heldWeaponTexture(id: WeaponId): string {
+  return `held-${id}`;
 }
 
 export function monsterTexture(id: MonsterId, facing: Facing = "down"): string {

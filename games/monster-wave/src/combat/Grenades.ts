@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import { viewConfig, type Explosion } from "../config";
 import { TEX } from "../assets/keys";
+import { displayScale } from "../assets/images";
 
 interface Grenade {
   active: boolean;
@@ -37,7 +38,7 @@ export class Grenades {
       g = {
         active: false, sx: 0, sy: 0, tx: 0, ty: 0, throwAt: 0, landAt: 0, fuseAt: 0, explosion,
         shadow: this.scene.add.image(0, 0, TEX.shadow).setAlpha(0.3).setDisplaySize(10, 5),
-        image: this.scene.add.image(0, 0, TEX.grenade),
+        image: this.scene.add.image(0, 0, TEX.grenade).setScale(displayScale(this.scene, TEX.grenade)),
       };
       this.items.push(g);
     }

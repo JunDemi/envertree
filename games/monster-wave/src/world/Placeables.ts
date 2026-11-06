@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { Explosion } from "../config";
 import { TEX } from "../assets/keys";
+import { displayScale } from "../assets/images";
 import type { Grid } from "./Grid";
 
 export type PlaceableType = "barricade" | "barrel";
@@ -60,10 +61,9 @@ export class Placeables {
     const t = this.grid.tile;
     const bottom = (row + 1) * t;
     const cx = (col + 0.5) * t;
-    const image =
-      type === "barricade"
-        ? this.scene.add.image(cx, bottom, TEX.barricade).setOrigin(0.5, 1)
-        : this.scene.add.image(cx, bottom - 6, TEX.barrel).setOrigin(0.5, 1);
+    const key = type === "barricade" ? TEX.barricade : TEX.barrel;
+    const image = this.scene.add.image(cx, type === "barricade" ? bottom : bottom - 6, key).setOrigin(0.5, 1);
+    const scale = displayScale(this.scene, key);
     image.setDepth(bottom);
 
     const zone = this.scene.add.zone(cx, (row + 0.5) * t, t, t);
@@ -75,8 +75,8 @@ export class Placeables {
     this.cb.onGridChanged();
 
     // 설치 연출: 살짝 튀어오름
-    image.setScale(1, 0.6);
-    this.scene.tweens.add({ targets: image, scaleY: 1, duration: 140, ease: "Back.out" });
+    image.setScale(scale, scale * 0.6);
+    this.scene.tweens.add({ targets: image, scaleY: scale, duration: 140, ease: "Back.out" });
     return p;
   }
 

@@ -31,7 +31,7 @@ import type { Monster } from "../entities/Monster";
 import { MonsterManager } from "../entities/MonsterManager";
 import { Player } from "../entities/Player";
 import { GameEvents } from "../events";
-import { KeyboardMouseInput } from "../input/KeyboardMouseInput";
+import { DISARM_FIRE_EVENT, KeyboardMouseInput } from "../input/KeyboardMouseInput";
 import type { InputSource, PlayerInput } from "../input/types";
 import { notifyGameStart } from "../portal";
 import { Combo } from "../systems/Combo";
@@ -136,6 +136,7 @@ export class GameScene extends Phaser.Scene {
       fireRocket: (def) => this.fireRocket(def),
       onFired: (def) => sfx.play(def.id),
       onChanged: () => this.events.emit(GameEvents.weapons),
+      onAutoSwitched: () => this.events.emit(DISARM_FIRE_EVENT),
       onUnlocked: (def, slot) => {
         sfx.play("unlock");
         this.events.emit(GameEvents.unlock, def.name, slot);
@@ -621,10 +622,14 @@ export class GameScene extends Phaser.Scene {
 
   /** 물리 계산이 끝난 뒤 그림 위치/depth를 맞춘다 */
   private syncView() {
-    if (!this.player.dead) this.player.syncView();
+    if (!this.player.dead) {
+      this.player.setWeapon(this.weapon.current.def.id);
+      this.player.syncView();
+    }
     const p = this.player.sprite;
-    this.arena.updateOcclusion(p.x, p.y, p.width);
-    this.placeables.updateOcclusion(p.x, p.y, p.width, viewConfig.occludingWallAlpha);
+    // 화면에 보이는 너비 (그림은 축소되어 있으므로 width가 아니라 displayWidth)
+    this.arena.updateOcclusion(p.x, p.y, p.displayWidth);
+    this.placeables.updateOcclusion(p.x, p.y, p.displayWidth, viewConfig.occludingWallAlpha);
     this.debugTools.draw();
   }
 
