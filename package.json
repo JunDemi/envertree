@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node scripts/build-games.ts --missing-only && pnpm --filter portal dev",
     "build": "pnpm --filter portal build",
+    "clean": "rm -rf .turbo node_modules/.cache",
     "build:games": "node scripts/build-games.ts",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck"

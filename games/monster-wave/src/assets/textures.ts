@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { gameConfig, monsters, playerConfig, viewConfig, type MonsterDef } from "../config";
 import { darken, lighten } from "./color";
-import { TEX, monsterTexture } from "./keys";
+import { FACINGS, TEX, monsterTexture, playerTexture, type Facing } from "./keys";
 
 /**
  * 프로토타입 텍스처를 코드로 그려서 만든다. 이미지 파일을 쓰지 않는다.
@@ -20,8 +20,8 @@ export function generateTextures(scene: Phaser.Scene) {
     g.generateTexture(key, w, h);
   };
 
-  // ── 플레이어: 몸통 상자 + 머리 상자 ──
-  for (const back of [false, true]) {
+  // ── 플레이어: 몸통 상자 + 머리 상자, 방향마다 얼굴/머리카락이 다르다 ──
+  for (const facing of FACINGS) {
     const p = playerConfig;
     const { w, d } = p.footprint;
     const { w: hw, d: hd, height: hh } = p.head;
@@ -29,15 +29,23 @@ export function generateTextures(scene: Phaser.Scene) {
     const bodyTop = hh + (hd - d) / 2;
     const width = w + 2;
     const height = Math.ceil(bodyTop + d + p.bodyHeight) + 1;
-    bake(back ? TEX.playerBack : TEX.player, width, height, () => {
+    bake(playerTexture(facing), width, height, () => {
       drawBox(g, 1, bodyTop, w, d, p.bodyHeight, p.color);
       const headX = 1 + (w - hw) / 2;
       drawBox(g, headX, 0, hw, hd, hh, p.headColor);
-      if (!back) {
-        // 눈: 머리 앞면에 두 점 → 앞모습
+      const look = PLAYER_FACES[facing];
+      const hair = darken(p.headColor, 0.55);
+      // 머리 윗면은 늘 머리카락
+      g.fillStyle(hair).fillRect(headX + 1, 1, hw - 2, hd - 1);
+      g.fillStyle(hair);
+      if (look.back === null) {
+        // 앞쪽: 앞머리 + 눈
+        g.fillRect(headX + 1, hd, hw - 2, 3);
         g.fillStyle(0x0f172a);
-        g.fillRect(headX + 4, hd + 4, 3, 4);
-        g.fillRect(headX + hw - 7, hd + 4, 3, 4);
+        for (const ex of look.eyes) g.fillRect(Math.round(headX + hw * ex - 1.5), hd + 5, 3, 4);
+      } else {
+        // 뒤쪽: 뒷머리가 얼굴을 덮는다. 오른쪽 위를 볼 때는 오른쪽 볼이 조금 보인다
+        g.fillRect(headX + 1, hd, Math.round((hw - 2) * look.back), hh - 3);
       }
     });
   }
@@ -51,7 +59,7 @@ export function generateTextures(scene: Phaser.Scene) {
 
   // ── 몬스터 ──
   for (const def of Object.values(monsters)) {
-    bakeMonster(g, def);
+    for (const facing of FACINGS) bakeMonster(g, def, facing);
   }
 
   // ── 그림자: 검은 타원 (알파는 스프라이트에서 조절) ──
@@ -148,23 +156,81 @@ export function generateTextures(scene: Phaser.Scene) {
   g.destroy();
 }
 
-/** 몬스터: 상자 + 앞면 눈 (+ 임프는 뿔) */
-function bakeMonster(g: Phaser.GameObjects.Graphics, def: MonsterDef) {
+/**
+ * 플레이어 방향별 얼굴 (머리 너비 기준 0~1).
+ * - eyes: 눈 가운데 위치
+ * - back: 뒷머리가 얼굴 앞면을 덮는 비율 (앞쪽 방향은 null)
+ */
+const PLAYER_FACES: Record<Facing, { eyes: number[]; back: number | null }> = {
+  down: { eyes: [0.28, 0.72], back: null },
+  downRight: { eyes: [0.46, 0.8], back: null },
+  right: { eyes: [0.8], back: null },
+  upRight: { eyes: [], back: 0.78 },
+  up: { eyes: [], back: 1 },
+};
+
+/**
+ * 몬스터 방향별 얼굴. 위치는 몸 너비 기준 0~1.
+ * - eyes: 눈 가운데 위치. 눈동자(pupil)는 -1(왼쪽)~1(오른쪽)만큼 보는 쪽으로 쏠린다
+ * - mouth: 입 가운데 위치 (없으면 null)
+ * - back: 위쪽을 볼 때 보이는 등 무늬 가운데 위치 (없으면 null)
+ */
+const FACES: Record<Facing, { eyes: number[]; pupil: number; mouth: number | null; back: number | null }> = {
+  down: { eyes: [0.3, 0.7], pupil: 0, mouth: 0.5, back: null },
+  downRight: { eyes: [0.48, 0.8], pupil: 1, mouth: 0.66, back: null },
+  right: { eyes: [0.78], pupil: 1, mouth: 0.86, back: null },
+  upRight: { eyes: [], pupil: 0, mouth: null, back: 0.36 },
+  up: { eyes: [], pupil: 0, mouth: null, back: 0.5 },
+};
+
+/** 몬스터: 상자 + 앞면 얼굴(또는 등 무늬) (+ 임프는 뿔). 방향마다 얼굴이 다르다 */
+function bakeMonster(g: Phaser.GameObjects.Graphics, def: MonsterDef, facing: Facing) {
   const { w, d } = def.footprint;
   const hornSpace = def.horns ? 7 : 0;
   const width = w + 2;
   const height = hornSpace + d + def.height + 1;
+  const face = FACES[facing];
 
   g.clear();
   const top = hornSpace;
   drawBox(g, 1, top, w, d, def.height, def.color);
 
-  // 눈: 앞면 위쪽에 두 점. 크기는 몸집에 비례
-  const eye = Math.max(2, Math.round(w / 8));
-  const eyeY = top + d + Math.round(def.height * 0.22);
-  g.fillStyle(0x111111);
-  g.fillRect(1 + w * 0.28 - eye / 2, eyeY, eye, eye + 1);
-  g.fillRect(1 + w * 0.72 - eye / 2, eyeY, eye, eye + 1);
+  const frontY = top + d; // 앞면 위쪽
+  const h = def.height;
+  // 몸 안쪽으로 자른 사각형 (테두리 1px 안쪽)
+  const fill = (x: number, y: number, rw: number, rh: number) => {
+    const l = Math.max(2, Math.round(x));
+    const r = Math.min(w, Math.round(x + rw));
+    if (r > l) g.fillRect(l, Math.round(y), r - l, Math.round(rh));
+  };
+
+  // 눈: 흰자 + 눈동자. 크기는 몸집에 비례
+  const eye = Math.max(3, Math.round(w / 5));
+  const pupil = Math.max(1, Math.ceil(eye / 2));
+  const eyeY = frontY + Math.max(2, Math.round(h * 0.18));
+  for (const ex of face.eyes) {
+    const left = 1 + w * ex - eye / 2;
+    g.fillStyle(0xf8fafc);
+    fill(left, eyeY, eye, eye + 1);
+    g.fillStyle(0x111111);
+    const px = left + ((eye - pupil) / 2) * (1 + face.pupil);
+    fill(px, eyeY + eye + 1 - pupil - 1, pupil, pupil + 1);
+  }
+
+  // 입
+  if (face.mouth !== null) {
+    const mw = Math.max(3, Math.round(w * (facing === "right" ? 0.18 : 0.32)));
+    const mh = Math.max(1, Math.round(h / 20));
+    g.fillStyle(0x111111, 0.85);
+    fill(1 + w * face.mouth - mw / 2, eyeY + eye + 1 + Math.max(2, Math.round(h * 0.14)), mw, mh);
+  }
+
+  // 등 무늬: 얼굴 대신 어두운 세로 줄 (뒷모습이라는 표시)
+  if (face.back !== null) {
+    const bw = Math.max(3, Math.round(w * 0.26));
+    g.fillStyle(darken(def.color, 0.55));
+    fill(1 + w * face.back - bw / 2, frontY + h * 0.12, bw, h * 0.62);
+  }
 
   if (def.horns) {
     // 윗면 양쪽 끝에서 솟은 뿔
@@ -173,7 +239,7 @@ function bakeMonster(g: Phaser.GameObjects.Graphics, def: MonsterDef) {
     g.fillTriangle(w - 5, top + d / 2, w - 1, top + d / 2, w - 2, 0);
   }
 
-  g.generateTexture(monsterTexture(def.id), width, height);
+  g.generateTexture(monsterTexture(def.id, facing), width, height);
 }
 
 /**

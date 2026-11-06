@@ -135,6 +135,15 @@ export class MonsterManager {
         }
       }
 
+      // 바라보는 방향: 멈춰서 쏠 때는 대상 쪽, 움직일 때는 가는 쪽
+      if (holding) {
+        m.lookX = toX;
+        m.lookY = toY;
+      } else {
+        m.lookX = dirX;
+        m.lookY = dirY;
+      }
+
       let vx = dirX * m.speed + m.pushX;
       let vy = dirY * m.speed + m.pushY;
 

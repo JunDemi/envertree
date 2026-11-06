@@ -27,6 +27,8 @@ export const viewConfig = {
 
   /** 총을 드는 높이 (발밑에서 위로 px). 조준 기준점과 총 그림 위치에 쓴다 */
   gunHeight: 16,
+  /** 몬스터가 방향을 바꾼 뒤 다시 바꾸기까지 기다리는 시간 (ms). 경계에서 그림이 떨리지 않게 */
+  facingHoldMs: 150,
   /** 설치물 높이 (px) */
   barricadeHeight: 26,
   barrelHeight: 24,

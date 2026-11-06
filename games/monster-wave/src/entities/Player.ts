@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { debugState, playerConfig, viewConfig } from "../config";
-import { TEX } from "../assets/keys";
+import { TEX, playerTexture } from "../assets/keys";
 import type { PlayerInput } from "../input/types";
 import { addShadow, placeShadow } from "../view/depth";
+import { facingFromVector } from "../view/facing";
 
 /**
  * 플레이어. 물리 몸체는 발자국(footprint) 크기이고, 그림은 그 위로 솟아 있다.
@@ -27,7 +28,7 @@ export class Player {
 
     this.shadow = addShadow(scene, x, y, playerConfig.footprint);
 
-    this.sprite = scene.physics.add.image(x, y, TEX.player).setOrigin(0.5, 1);
+    this.sprite = scene.physics.add.image(x, y, playerTexture("down")).setOrigin(0.5, 1);
     // 몸체를 발자국 크기로 줄이고 스프라이트 맨 아래에 붙인다
     const frameW = this.sprite.width;
     const frameH = this.sprite.height;
@@ -90,10 +91,10 @@ export class Player {
   /** 물리 이동이 끝난 뒤 그림을 맞춘다 (scene의 update 끝에서 호출) */
   syncView() {
     const { x, y } = this;
-    const facingUp = Math.sin(this.aimAngle) < -0.2;
-
-    // 위를 볼 때는 뒷모습(눈 없음), 아래를 볼 때는 앞모습
-    this.sprite.setTexture(facingUp ? TEX.playerBack : TEX.player);
+    // 몸은 조준 방향을 본다 (5방향 + 좌우 반전)
+    const { facing, flip } = facingFromVector(Math.cos(this.aimAngle), Math.sin(this.aimAngle));
+    const facingUp = facing === "up" || facing === "upRight";
+    this.sprite.setTexture(playerTexture(facing)).setFlipX(flip);
     this.sprite.setDepth(y);
     placeShadow(this.shadow, x, y, playerConfig.footprint);
 

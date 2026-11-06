@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { gameConfig, monsters, playerConfig } from "../config";
-import { TEX, monsterTexture } from "../assets/keys";
+import { TEX, monsterTexture, playerTexture } from "../assets/keys";
 import { sfx } from "../audio/Sfx";
 import { notifyReady } from "../portal";
 import { storage } from "../storage";
@@ -25,7 +25,7 @@ export class TitleScene extends Phaser.Scene {
 
     // 캐릭터 소개 줄: 플레이어 + 몬스터 4종
     const lineup: { key: string; name: string; footprint: { w: number; d: number } }[] = [
-      { key: TEX.player, name: "나", footprint: playerConfig.footprint },
+      { key: playerTexture("down"), name: "나", footprint: playerConfig.footprint },
       ...Object.values(monsters).map((m) => ({ key: monsterTexture(m.id), name: m.name, footprint: m.footprint })),
     ];
     const groundY = 330;

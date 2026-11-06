@@ -1,7 +1,8 @@
 import Phaser from "phaser";
-import { combatConfig, type MonsterDef } from "../config";
-import { monsterTexture, TEX } from "../assets/keys";
+import { combatConfig, viewConfig, type MonsterDef } from "../config";
+import { monsterTexture, TEX, type Facing } from "../assets/keys";
 import { placeShadow, sizeShadow } from "../view/depth";
+import { facingFromVector } from "../view/facing";
 
 /**
  * 몬스터 한 마리. 풀에서 꺼내 spawn()으로 재사용한다 (MonsterManager가 관리).
@@ -28,6 +29,12 @@ export class Monster {
   /** 원거리 공격: 시야 확인 캐시 */
   losCheckAt = 0;
   hasLos = false;
+  /** 바라볼 방향 (MonsterManager가 매 프레임 정한다). 0이면 그대로 둔다 */
+  lookX = 0;
+  lookY = 1;
+  private facing: Facing = "down";
+  private flipped = false;
+  private facingChangedAt = 0;
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, TEX.shadow).setAlpha(0.35).setVisible(false);
@@ -49,7 +56,12 @@ export class Monster {
     this.nextObstacleAttackAt = 0;
     this.losCheckAt = 0;
     this.hasLos = false;
-    this.sprite.setTexture(monsterTexture(def.id)).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    this.lookX = 0;
+    this.lookY = 1;
+    this.facing = "down";
+    this.flipped = false;
+    this.facingChangedAt = 0;
+    this.sprite.setTexture(monsterTexture(def.id, "down")).setFlipX(false).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
     this.sprite.setVisible(true);
     sizeShadow(this.shadow, def.footprint);
     this.shadow.setVisible(true);
@@ -78,11 +90,24 @@ export class Monster {
   }
 
   syncView(now: number) {
+    this.updateFacing(now);
     this.sprite.setPosition(this.x, this.y).setDepth(this.y);
     placeShadow(this.shadow, this.x, this.y, this.def.footprint);
     if (this.flashUntil !== 0 && now >= this.flashUntil) {
       this.flashUntil = 0;
       this.sprite.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
     }
+  }
+
+  /** lookX/lookY에 맞춰 그림 방향을 바꾼다. 바꾼 직후에는 잠시 유지한다 */
+  private updateFacing(now: number) {
+    if (this.lookX === 0 && this.lookY === 0) return;
+    const { facing, flip } = facingFromVector(this.lookX, this.lookY);
+    if (facing === this.facing && flip === this.flipped) return;
+    if (now - this.facingChangedAt < viewConfig.facingHoldMs) return;
+    this.facing = facing;
+    this.flipped = flip;
+    this.facingChangedAt = now;
+    this.sprite.setTexture(monsterTexture(this.def.id, facing)).setFlipX(flip);
   }
 }

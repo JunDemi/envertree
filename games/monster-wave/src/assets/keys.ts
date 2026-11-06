@@ -5,9 +5,6 @@ import type { MonsterId } from "../config";
  * 나중에 실제 스프라이트로 바꿀 때는 같은 키로 이미지를 로드하면 게임 코드는 그대로 동작한다.
  */
 export const TEX = {
-  /** 플레이어 (앞모습: 눈 보임 / 뒷모습: 눈 없음). 조준 방향에 따라 바꿔 쓴다 */
-  player: "player",
-  playerBack: "player-back",
   /** 플레이어가 든 총. 조준 방향으로 회전 */
   gun: "gun",
   /** 발밑 그림자 (검은 타원, 크기는 스케일로 조절) */
@@ -33,6 +30,17 @@ export const TEX = {
   blast: "blast",
 } as const;
 
-export function monsterTexture(id: MonsterId): string {
-  return `monster-${id}`;
+/**
+ * 캐릭터가 바라보는 방향. 이 5방향만 그리고, 왼쪽 3방향은 좌우 반전해서 쓴다.
+ */
+export const FACINGS = ["down", "downRight", "right", "upRight", "up"] as const;
+export type Facing = (typeof FACINGS)[number];
+
+/** 플레이어. 조준 방향에 따라 바꿔 쓴다 */
+export function playerTexture(facing: Facing = "down"): string {
+  return `player-${facing}`;
+}
+
+export function monsterTexture(id: MonsterId, facing: Facing = "down"): string {
+  return `monster-${id}-${facing}`;
 }
