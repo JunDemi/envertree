@@ -1,7 +1,7 @@
 import Phaser from "phaser";
-import { gameConfig, monsters, playerConfig, viewConfig, type MonsterDef } from "../config";
+import { gameConfig, monsters, viewConfig, type MonsterDef } from "../config";
 import { darken, lighten } from "./color";
-import { FACINGS, TEX, monsterTexture, playerTexture, type Facing } from "./keys";
+import { FACINGS, TEX, monsterTexture, type Facing } from "./keys";
 
 /**
  * 프로토타입 텍스처를 코드로 그려서 만든다. 이미지 파일을 쓰지 않는다.
@@ -19,36 +19,6 @@ export function generateTextures(scene: Phaser.Scene) {
     draw();
     g.generateTexture(key, w, h);
   };
-
-  // ── 플레이어: 몸통 상자 + 머리 상자, 방향마다 얼굴/머리카락이 다르다 ──
-  for (const facing of FACINGS) {
-    const p = playerConfig;
-    const { w, d } = p.footprint;
-    const { w: hw, d: hd, height: hh } = p.head;
-    // 머리 앞면 아래쪽이 몸통 윗면 가운데에 오도록 몸통 윗면 시작 위치(bodyTop)를 계산
-    const bodyTop = hh + (hd - d) / 2;
-    const width = w + 2;
-    const height = Math.ceil(bodyTop + d + p.bodyHeight) + 1;
-    bake(playerTexture(facing), width, height, () => {
-      drawBox(g, 1, bodyTop, w, d, p.bodyHeight, p.color);
-      const headX = 1 + (w - hw) / 2;
-      drawBox(g, headX, 0, hw, hd, hh, p.headColor);
-      const look = PLAYER_FACES[facing];
-      const hair = darken(p.headColor, 0.55);
-      // 머리 윗면은 늘 머리카락
-      g.fillStyle(hair).fillRect(headX + 1, 1, hw - 2, hd - 1);
-      g.fillStyle(hair);
-      if (look.back === null) {
-        // 앞쪽: 앞머리 + 눈
-        g.fillRect(headX + 1, hd, hw - 2, 3);
-        g.fillStyle(0x0f172a);
-        for (const ex of look.eyes) g.fillRect(Math.round(headX + hw * ex - 1.5), hd + 5, 3, 4);
-      } else {
-        // 뒤쪽: 뒷머리가 얼굴을 덮는다. 오른쪽 위를 볼 때는 오른쪽 볼이 조금 보인다
-        g.fillRect(headX + 1, hd, Math.round((hw - 2) * look.back), hh - 3);
-      }
-    });
-  }
 
   // ── 총: 짧은 막대 (오른쪽을 향함, 회전해서 사용) ──
   bake(TEX.gun, 18, 6, () => {
@@ -155,19 +125,6 @@ export function generateTextures(scene: Phaser.Scene) {
 
   g.destroy();
 }
-
-/**
- * 플레이어 방향별 얼굴 (머리 너비 기준 0~1).
- * - eyes: 눈 가운데 위치
- * - back: 뒷머리가 얼굴 앞면을 덮는 비율 (앞쪽 방향은 null)
- */
-const PLAYER_FACES: Record<Facing, { eyes: number[]; back: number | null }> = {
-  down: { eyes: [0.28, 0.72], back: null },
-  downRight: { eyes: [0.46, 0.8], back: null },
-  right: { eyes: [0.8], back: null },
-  upRight: { eyes: [], back: 0.78 },
-  up: { eyes: [], back: 1 },
-};
 
 /**
  * 몬스터 방향별 얼굴. 위치는 몸 너비 기준 0~1.

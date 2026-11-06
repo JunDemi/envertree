@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { gameConfig, monsters, playerConfig } from "../config";
+import { gameConfig, monsters, playerConfig, viewConfig } from "../config";
 import { TEX, monsterTexture, playerTexture } from "../assets/keys";
 import { sfx } from "../audio/Sfx";
 import { notifyReady } from "../portal";
@@ -24,9 +24,10 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(cx, 168, "MONSTER WAVE", textStyle(20, "#94a3b8")).setOrigin(0.5).setLetterSpacing(8);
 
     // 캐릭터 소개 줄: 플레이어 + 몬스터 4종
-    const lineup: { key: string; name: string; footprint: { w: number; d: number } }[] = [
-      { key: playerTexture("down"), name: "나", footprint: playerConfig.footprint },
-      ...Object.values(monsters).map((m) => ({ key: monsterTexture(m.id), name: m.name, footprint: m.footprint })),
+    // scale: 실제 그림 파일은 2배로 제작되어 있어 artScale을 곱한다
+    const lineup: { key: string; name: string; footprint: { w: number; d: number }; scale: number }[] = [
+      { key: playerTexture("down"), name: "나", footprint: playerConfig.footprint, scale: viewConfig.artScale },
+      ...Object.values(monsters).map((m) => ({ key: monsterTexture(m.id), name: m.name, footprint: m.footprint, scale: 1 })),
     ];
     const groundY = 330;
     const gap = 120;
@@ -34,7 +35,7 @@ export class TitleScene extends Phaser.Scene {
     lineup.forEach((c, i) => {
       const x = startX + gap * i;
       addShadow(this, x, groundY, c.footprint);
-      const sprite = this.add.image(0, 0, c.key).setOrigin(0.5, 1).setScale(2);
+      const sprite = this.add.image(0, 0, c.key).setOrigin(0.5, 1).setScale(2 * c.scale);
       placeOnGround(sprite, x, groundY);
       this.add.text(x, groundY + 22, c.name, textStyle(16, i === 0 ? "#93c5fd" : "#e2e8f0")).setOrigin(0.5);
       // 살짝 들썩이는 대기 동작
@@ -57,7 +58,7 @@ export class TitleScene extends Phaser.Scene {
     if (best > 0) {
       this.add.text(cx, 482, `최고 점수  ${best.toLocaleString()}`, textStyle(18, "#fde68a", true)).setOrigin(0.5);
     }
-    this.add.text(12, height - 10, "프로토타입 · 모든 그래픽과 소리는 코드로 생성", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(0, 1);
+    this.add.text(12, height - 10, "프로토타입 · 그래픽과 소리는 대부분 임시", { fontFamily: FONT, fontSize: "12px", color: "#64748b" }).setOrigin(0, 1);
     const mute = this.add.text(width - 12, height - 10, "", textStyle(13, "#94a3b8", true)).setOrigin(1, 1).setInteractive({ useHandCursor: true });
     const refreshMute = () => mute.setText(sfx.muted ? "소리 꺼짐 (M)" : "소리 켜짐 (M)");
     refreshMute();

@@ -28,12 +28,14 @@ export class Player {
 
     this.shadow = addShadow(scene, x, y, playerConfig.footprint);
 
-    this.sprite = scene.physics.add.image(x, y, playerTexture("down")).setOrigin(0.5, 1);
-    // 몸체를 발자국 크기로 줄이고 스프라이트 맨 아래에 붙인다
+    const scale = viewConfig.artScale;
+    this.sprite = scene.physics.add.image(x, y, playerTexture("down")).setOrigin(0.5, 1).setScale(scale);
+    // 몸체를 발자국 크기로 줄이고 스프라이트 맨 아래에 붙인다.
+    // 물리 몸체의 크기·위치는 그림 원본 픽셀 기준이라 축소 비율만큼 나눠서 준다
     const frameW = this.sprite.width;
     const frameH = this.sprite.height;
-    this.sprite.body.setSize(w, d, false);
-    this.sprite.body.setOffset((frameW - w) / 2, frameH - d);
+    this.sprite.body.setSize(w / scale, d / scale, false);
+    this.sprite.body.setOffset((frameW - w / scale) / 2, frameH - d / scale);
 
     this.gun = scene.add.image(x, y, TEX.gun).setOrigin(0.15, 0.5);
   }
@@ -83,8 +85,9 @@ export class Player {
     this.pushX *= decay;
     this.pushY *= decay;
 
-    // 조준: 총을 드는 높이에서 마우스 지점을 향한다
-    const gunY = this.y - viewConfig.gunHeight;
+    // 조준: 총을 쥔 높이에서 마우스 지점을 향한다
+    // (총알은 발자국 가운데에서 출발해 gunHeight 높이로 그려지므로 같은 기준점을 쓴다)
+    const gunY = this.y - playerConfig.footprint.d / 2 - viewConfig.gunHeight;
     this.aimAngle = Math.atan2(input.aimY - gunY, input.aimX - this.x);
   }
 
@@ -99,8 +102,12 @@ export class Player {
     placeShadow(this.shadow, x, y, playerConfig.footprint);
 
     // 총: 몸통 옆, 조준 방향으로 회전. 위를 볼 때는 몸 뒤에 그린다
-    const reach = 8;
-    this.gun.setPosition(x + Math.cos(this.aimAngle) * reach, y - viewConfig.gunHeight + Math.sin(this.aimAngle) * reach * 0.5);
+    const { gunHeight, gunReach, gunReachYScale } = viewConfig;
+    const handY = y - playerConfig.footprint.d / 2 - gunHeight;
+    this.gun.setPosition(
+      x + Math.cos(this.aimAngle) * gunReach,
+      handY + Math.sin(this.aimAngle) * gunReach * gunReachYScale,
+    );
     this.gun.setRotation(this.aimAngle);
     // 왼쪽을 볼 때 총이 뒤집혀 보이지 않게
     this.gun.setFlipY(Math.cos(this.aimAngle) < 0);
