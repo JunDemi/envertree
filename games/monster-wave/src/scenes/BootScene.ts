@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { loadImages } from "../assets/images";
+import { checkImages, loadImages } from "../assets/images";
 import { generateTextures } from "../assets/textures";
 import { SCENES } from "./keys";
 
@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    checkImages(this);
     generateTextures(this);
     this.scene.start(SCENES.title);
   }

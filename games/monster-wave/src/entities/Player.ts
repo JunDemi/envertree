@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { debugState, playerConfig, viewConfig } from "../config";
-import { TEX, playerTexture } from "../assets/keys";
+import { TEX, playerTexture, type Facing, type PlayerPose } from "../assets/keys";
 import type { PlayerInput } from "../input/types";
 import { addShadow, placeShadow } from "../view/depth";
 import { facingFromVector } from "../view/facing";
@@ -22,6 +22,8 @@ export class Player {
   /** 넉백으로 남은 밀림 속도 (px/초). 이동 입력에 더해지고 매 프레임 감쇠 */
   private pushX = 0;
   private pushY = 0;
+  /** 걷기 애니메이션: 걷기 시작부터 흐른 시간 (ms). 멈추면 0 */
+  private walkMs = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     const { w, d } = playerConfig.footprint;
@@ -81,6 +83,8 @@ export class Player {
     if (this.dead) return;
     const body = this.sprite.body;
     body.setVelocity(input.moveX * playerConfig.speed + this.pushX, input.moveY * playerConfig.speed + this.pushY);
+    const moving = input.moveX !== 0 || input.moveY !== 0;
+    this.walkMs = moving ? this.walkMs + dt * 1000 : 0;
     const decay = Math.exp(-10 * dt);
     this.pushX *= decay;
     this.pushY *= decay;
@@ -97,7 +101,8 @@ export class Player {
     // 몸은 조준 방향을 본다 (5방향 + 좌우 반전)
     const { facing, flip } = facingFromVector(Math.cos(this.aimAngle), Math.sin(this.aimAngle));
     const facingUp = facing === "up" || facing === "upRight";
-    this.sprite.setTexture(playerTexture(facing)).setFlipX(flip);
+    const frame = this.walkFrame(facing);
+    this.sprite.setTexture(playerTexture(facing, frame.pose)).setFlipX(flip !== frame.flip);
     this.sprite.setDepth(y);
     placeShadow(this.shadow, x, y, playerConfig.footprint);
 
@@ -133,5 +138,21 @@ export class Player {
       x: this.x + Math.cos(this.aimAngle) * muzzleDist,
       y: this.y - playerConfig.footprint.d / 2 + Math.sin(this.aimAngle) * muzzleDist,
     };
+  }
+
+  /**
+   * 걷기 순서
+   * - 아래·위: 뻗기 → 뻗기(좌우 반전) → 반복. 서기 없이 양발을 번갈아 뻗는다
+   * - 옆 방향: 뻗기 → 서기 → 반대 발 → 서기. 반대 발은 walk2 그림(없으면 뻗기를 그대로 반복)
+   */
+  private walkFrame(facing: Facing): { pose: PlayerPose; flip: boolean } {
+    if (this.walkMs === 0) return { pose: "stand", flip: false };
+    // 걷기 시작하자마자 발을 뻗도록 한 칸 당긴다
+    const step = (Math.floor(this.walkMs / playerConfig.walkFrameMs) + 1) % 4;
+    if (facing === "down" || facing === "up") return { pose: "walk", flip: step % 2 === 0 };
+    if (step === 0 || step === 2) return { pose: "stand", flip: false };
+    if (step === 1) return { pose: "walk", flip: false };
+    const hasWalk2 = this.sprite.scene.textures.exists(playerTexture(facing, "walk2"));
+    return { pose: hasWalk2 ? "walk2" : "walk", flip: false };
   }
 }

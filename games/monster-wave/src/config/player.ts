@@ -3,6 +3,8 @@ export const playerConfig = {
   maxHp: 100,
   /** 이동 속도 (px/초). 대각선도 같은 속도로 정규화한다. */
   speed: 190,
+  /** 걷기 그림 한 장을 보여 주는 시간 (ms). 순서는 Player.walkFrame 참고 */
+  walkFrameMs: 130,
   /** 피격 후 무적 시간 (ms) */
   invincibleMs: 400,
   /** 몬스터에게 접촉 피해를 입을 때 밀려나는 거리 (px). 0이면 넉백 없음 */

@@ -36,9 +36,12 @@ export const TEX = {
 export const FACINGS = ["down", "downRight", "right", "upRight", "up"] as const;
 export type Facing = (typeof FACINGS)[number];
 
-/** 플레이어. 조준 방향에 따라 바꿔 쓴다 */
-export function playerTexture(facing: Facing = "down"): string {
-  return `player-${facing}`;
+/** 플레이어 동작: 서 있기, 발 뻗기, 반대 발 뻗기(옆 방향용, 없으면 walk를 반복) */
+export type PlayerPose = "stand" | "walk" | "walk2";
+
+/** 플레이어. 조준 방향과 동작에 따라 바꿔 쓴다 */
+export function playerTexture(facing: Facing = "down", pose: PlayerPose = "stand"): string {
+  return `player-${pose}-${facing}`;
 }
 
 export function monsterTexture(id: MonsterId, facing: Facing = "down"): string {
