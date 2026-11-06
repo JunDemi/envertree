@@ -139,3 +139,60 @@ pnpm dev
 
 Supabase Auth의 Google 로그인을 쓴다. 게임 플레이는 로그인 없이 가능하다.
 서버에서 현재 사용자는 `getCurrentUser()` ([`src/lib/auth.ts`](apps/portal/src/lib/auth.ts))로 얻는다.
+
+## 배포 (Vercel)
+
+포털 하나만 Vercel 프로젝트로 배포한다. 게임은 포털 빌드 때 함께 빌드되어 `public/play/<slug>/`에 정적 파일로 들어간다.
+
+설정은 [`apps/portal/vercel.json`](apps/portal/vercel.json)과 `apps/portal/package.json`의 `engines`(Node 24)에 들어 있다.
+대시보드에서 따로 정할 것은 **Root Directory**와 **환경 변수**뿐이다.
+
+### 1. 프로젝트 만들기 (처음 한 번)
+
+1. 최신 커밋을 GitHub에 push 한다.
+2. [vercel.com](https://vercel.com) → **Add New… → Project** → `envertree` 저장소 **Import**
+3. **Root Directory** 옆 **Edit** → `apps/portal` 선택
+   - Framework Preset은 Next.js로 자동 선택된다. Build / Install Command는 비워 둔다 (`vercel.json`이 정함).
+4. **Environment Variables** 에 추가
+
+   | 이름 | 값 | 설명 |
+   | --- | --- | --- |
+   | `ENABLE_EXPERIMENTAL_COREPACK` | `1` | pnpm 11로 설치하게 한다. 없으면 Vercel이 pnpm 9~10을 골라 설치가 어긋날 수 있다 |
+   | `NEXT_PUBLIC_SUPABASE_URL` | `.env.local`과 같은 값 | |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `.env.local`과 같은 값 | |
+   | `NEXT_PUBLIC_SITE_URL` | (선택) 직접 연결한 도메인 | 비우면 Vercel 프로덕션 주소를 쓴다 |
+
+5. **Deploy**
+
+빌드 로그 맨 위에서 `pnpm v11.23.0`과 Node 24로 설치되는지 확인한다.
+`NEXT_PUBLIC_` 변수는 빌드할 때 코드에 들어가므로, 값을 바꾸면 **Redeploy** 해야 반영된다.
+
+> Settings → Build and Deployment → Root Directory 의 **Include files outside the root directory in the Build Step**은 켜져 있어야 한다(기본값).
+> 포털 빌드가 저장소 루트의 `scripts/build-games.ts`와 `games/*`를 쓰기 때문이다.
+
+### 2. 로그인 주소 등록 (Supabase)
+
+로그인 후 돌아올 주소는 접속한 사이트 주소로 자동으로 만들어지므로, 코드는 고칠 필요 없고 Supabase에 주소만 허용하면 된다.
+
+Supabase 대시보드 → **Authentication → URL Configuration**
+
+- **Site URL**: 프로덕션 주소 (예: `https://envertree.vercel.app`)
+- **Redirect URLs**에 추가
+  - `https://<프로덕션 주소>/**`
+  - `https://*-<Vercel 팀 또는 계정 slug>.vercel.app/**` — 미리보기(Preview) 배포에서도 로그인하려면
+  - `http://localhost:3000/**` — 로컬 개발용 (이미 있으면 그대로)
+
+### 3. Google Cloud는 바꿀 것 없음
+
+Google 로그인은 Supabase를 거치기 때문에, Google OAuth 클라이언트의 **승인된 리디렉션 URI**는 배포 주소가 아니라
+Supabase 주소(`https://<project-ref>.supabase.co/auth/v1/callback`) 하나면 된다. Phase 3에서 이미 등록했다.
+
+단, Google Cloud → **Google 인증 플랫폼(OAuth 동의 화면)**이 **테스트** 상태면 등록한 테스트 사용자만 로그인할 수 있다.
+누구나 로그인하게 하려면 **앱 게시(프로덕션으로 전환)** 를 누른다.
+
+### 4. 확인
+
+배포 주소에서:
+1. 메인 페이지에 게임 목록이 보인다.
+2. 게임을 눌러 플레이할 수 있다 (몬스터웨이브, 샘플).
+3. 로그인 → 헤더에 프로필 → 로그아웃까지 된다.
