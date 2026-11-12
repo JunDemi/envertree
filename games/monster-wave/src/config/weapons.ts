@@ -41,11 +41,13 @@ export interface GunWeapon extends WeaponBase {
   knockback: number;
 }
 
-/** 바라보는 방향 앞에 설치하는 무기 */
+/** 마우스 커서가 가리키는 칸에 설치하는 무기 */
 export interface PlaceableWeapon extends WeaponBase {
   kind: "placeable";
-  /** 플레이어로부터 설치 거리 (px) */
-  placeDistance: number;
+  /** 플레이어가 서 있는 칸에서 몇 칸 이내까지 설치할 수 있는지 (가로·세로·대각선 모두 칸 수로 셈) */
+  placeRangeTiles: number;
+  /** 이 칸 수보다 멀면 미리보기(설치 불가 붉은 표시 포함)를 아예 숨긴다 */
+  previewRangeTiles: number;
   placeable:
     | { type: "barricade"; maxHp: number }
     | { type: "barrel"; maxHp: number; explosion: Explosion };
@@ -127,7 +129,8 @@ export const weapons: readonly WeaponDef[] = [
     startAmmo: 6,
     ammoPerPickup: 3,
     unlockCombo: 15,
-    placeDistance: 40,
+    placeRangeTiles: 3,
+    previewRangeTiles: 6,
     placeable: { type: "barricade", maxHp: 120 },
   },
   {
@@ -139,7 +142,8 @@ export const weapons: readonly WeaponDef[] = [
     startAmmo: 4,
     ammoPerPickup: 2,
     unlockCombo: 20,
-    placeDistance: 40,
+    placeRangeTiles: 3,
+    previewRangeTiles: 6,
     placeable: { type: "barrel", maxHp: 1, explosion: { damage: 90, radius: 120, selfDamageRatio: 0.3 } },
   },
   {

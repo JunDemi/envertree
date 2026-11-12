@@ -306,32 +306,38 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** 바라보는 방향 앞 칸에 바리케이드/드럼통 설치. 자리가 없으면 false */
-  private place(def: PlaceableWeapon): boolean {
+  /** 마우스 커서가 가리키는 칸과, 그 칸에 설치할 수 있는지 */
+  private placementTarget(def: PlaceableWeapon) {
     const grid = this.arena.grid;
     const t = grid.tile;
+    const { col, row } = grid.worldToTile(this.lastInput.aimX, this.lastInput.aimY);
     const c = this.playerCenter();
-    const ang = this.player.aimAngle;
+    const me = grid.worldToTile(c.x, c.y);
+    const dist = Math.max(Math.abs(col - me.col), Math.abs(row - me.row));
+    const inRange = dist <= def.placeRangeTiles;
+    const left = col * t;
+    const top = row * t;
     const { w: pw, d: pd } = playerConfig.footprint;
-
-    // 앞쪽으로 조금씩 더 멀리 시도해서 처음 비어 있는 칸에 설치
-    for (const dist of [def.placeDistance, def.placeDistance + t * 0.5]) {
-      const { col, row } = grid.worldToTile(c.x + Math.cos(ang) * dist, c.y + Math.sin(ang) * dist);
-      if (grid.isBlocked(col, row)) continue;
-      const left = col * t;
-      const top = row * t;
+    const px0 = this.player.x - pw / 2;
+    const py0 = this.player.y - pd;
+    const ok =
+      inRange &&
+      !grid.isBlocked(col, row) &&
       // 플레이어 몸과 겹치면 안 됨
-      const px0 = this.player.x - pw / 2;
-      const py0 = this.player.y - pd;
-      if (px0 < left + t && px0 + pw > left && py0 < top + t && this.player.y > top) continue;
+      !(px0 < left + t && px0 + pw > left && py0 < top + t && this.player.y > top) &&
       // 몬스터와 겹치면 안 됨
-      const blocked = this.monsters.alive.some((m) => {
+      !this.monsters.alive.some((m) => {
         const mw = m.def.footprint.w;
         const md = m.def.footprint.d;
         return m.x - mw / 2 < left + t && m.x + mw / 2 > left && m.y - md < top + t && m.y > top;
       });
-      if (blocked) continue;
+    return { col, row, ok, dist };
+  }
 
+  /** 커서가 가리키는 칸에 바리케이드/드럼통 설치. 자리가 없으면 false */
+  private place(def: PlaceableWeapon): boolean {
+    const { col, row, ok } = this.placementTarget(def);
+    if (ok) {
       const pl = def.placeable;
       if (pl.type === "barricade") this.placeables.place("barricade", col, row, pl.maxHp);
       else this.placeables.place("barrel", col, row, pl.maxHp, pl.explosion);
@@ -341,9 +347,25 @@ export class GameScene extends Phaser.Scene {
     const now = this.time.now;
     if (now > this.placeFailNoticeAt) {
       this.placeFailNoticeAt = now + 700;
-      this.effects.floatText(c.x + Math.cos(ang) * 40, c.y + Math.sin(ang) * 40 - 20, "설치할 수 없음", "#fca5a5");
+      const t = this.arena.grid.tile;
+      this.effects.floatText((col + 0.5) * t, row * t - 10, "설치할 수 없음", "#fca5a5");
     }
     return false;
+  }
+
+  /** 설치 무기를 들고 있으면 커서 칸에 반투명 미리보기 */
+  private updatePlacePreview() {
+    const def = this.weapon.current.def;
+    if (this.player.dead || this.ending || def.kind !== "placeable" || !this.lastInput) {
+      this.placeables.hidePreview();
+      return;
+    }
+    const { col, row, ok, dist } = this.placementTarget(def);
+    if (dist > def.previewRangeTiles) {
+      this.placeables.hidePreview();
+      return;
+    }
+    this.placeables.showPreview(def.placeable.type, col, row, ok);
   }
 
   /** 조준 지점으로 수류탄 투척 (최대 거리 제한, 벽 속에 떨어지지 않게) */
@@ -630,6 +652,7 @@ export class GameScene extends Phaser.Scene {
     // 화면에 보이는 너비 (그림은 축소되어 있으므로 width가 아니라 displayWidth)
     this.arena.updateOcclusion(p.x, p.y, p.displayWidth);
     this.placeables.updateOcclusion(p.x, p.y, p.displayWidth, viewConfig.occludingWallAlpha);
+    this.updatePlacePreview();
     this.debugTools.draw();
   }
 

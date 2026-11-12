@@ -41,6 +41,8 @@ export class Placeables {
   private readonly cb: PlaceableCallbacks;
   private readonly byTile = new Map<number, Placeable>();
   private readonly faded = new Set<Placeable>();
+  /** 설치 위치 미리보기 (반투명 그림) */
+  private preview?: Phaser.GameObjects.Image;
 
   constructor(scene: Phaser.Scene, grid: Grid, walls: Phaser.Physics.Arcade.StaticGroup, cb: PlaceableCallbacks) {
     this.scene = scene;
@@ -57,12 +59,35 @@ export class Placeables {
     return this.byTile.values();
   }
 
-  place(type: PlaceableType, col: number, row: number, maxHp: number, explosion?: Explosion): Placeable {
+  /** 칸 (col, row)에 놓일 그림의 발밑 위치와 텍스처 */
+  private layout(type: PlaceableType, col: number, row: number) {
     const t = this.grid.tile;
     const bottom = (row + 1) * t;
-    const cx = (col + 0.5) * t;
     const key = type === "barricade" ? TEX.barricade : TEX.barrel;
-    const image = this.scene.add.image(cx, type === "barricade" ? bottom : bottom - 6, key).setOrigin(0.5, 1);
+    return { key, x: (col + 0.5) * t, y: type === "barricade" ? bottom : bottom - 6, depth: bottom };
+  }
+
+  /** 설치 미리보기를 칸 (col, row)에 반투명하게 보여준다. ok=false면 붉게 (설치 불가) */
+  showPreview(type: PlaceableType, col: number, row: number, ok: boolean) {
+    const { key, x, y, depth } = this.layout(type, col, row);
+    if (!this.preview) this.preview = this.scene.add.image(x, y, key).setOrigin(0.5, 1);
+    const img = this.preview;
+    if (img.texture.key !== key) img.setTexture(key);
+    img.setScale(displayScale(this.scene, key));
+    img.setPosition(x, y).setDepth(depth).setVisible(true);
+    img.setAlpha(ok ? 0.5 : 0.4);
+    if (ok) img.clearTint();
+    else img.setTint(0xff5050);
+  }
+
+  hidePreview() {
+    this.preview?.setVisible(false);
+  }
+
+  place(type: PlaceableType, col: number, row: number, maxHp: number, explosion?: Explosion): Placeable {
+    const t = this.grid.tile;
+    const { key, x: cx, y, depth: bottom } = this.layout(type, col, row);
+    const image = this.scene.add.image(cx, y, key).setOrigin(0.5, 1);
     const scale = displayScale(this.scene, key);
     image.setDepth(bottom);
 
