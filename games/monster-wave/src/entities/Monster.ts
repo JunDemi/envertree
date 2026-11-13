@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { combatConfig, viewConfig, type MonsterDef } from "../config";
 import { monsterTexture, TEX, type Facing } from "../assets/keys";
-import { placeShadow, sizeShadow } from "../view/depth";
+import { monsterShadowFootprint, placeShadow, sizeShadow, type Footprint } from "../view/depth";
 import { facingFromVector } from "../view/facing";
 
 /**
@@ -35,6 +35,8 @@ export class Monster {
   private facing: Facing = "down";
   private flipped = false;
   private facingChangedAt = 0;
+  /** 그림자 크기 (그림 너비 기준, 히트박스와 별개) */
+  private shadowFoot: Footprint = { w: 0, d: 0 };
 
   constructor(scene: Phaser.Scene) {
     this.shadow = scene.add.image(0, 0, TEX.shadow).setAlpha(0.35).setVisible(false);
@@ -65,7 +67,8 @@ export class Monster {
     // 화면 너비 = 그림 한 칸 × artScale. 실제 그림(2배)이든 코드 임시 그림(1배)이든 같은 크기로 보인다
     this.sprite.setScale((def.art.w * viewConfig.artScale) / this.sprite.frame.width);
     this.sprite.setVisible(true);
-    sizeShadow(this.shadow, def.footprint);
+    this.shadowFoot = monsterShadowFootprint(def.art);
+    sizeShadow(this.shadow, this.shadowFoot);
     this.shadow.setVisible(true);
     this.syncView(0);
   }
@@ -94,7 +97,7 @@ export class Monster {
   syncView(now: number) {
     this.updateFacing(now);
     this.sprite.setPosition(this.x, this.y).setDepth(this.y);
-    placeShadow(this.shadow, this.x, this.y, this.def.footprint);
+    placeShadow(this.shadow, this.x, this.y, this.shadowFoot);
     if (this.flashUntil !== 0 && now >= this.flashUntil) {
       this.flashUntil = 0;
       this.sprite.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);

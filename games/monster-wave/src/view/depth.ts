@@ -16,6 +16,15 @@ export interface Footprint {
   d: number;
 }
 
+/**
+ * 몬스터 그림자 크기. 히트박스가 아니라 그림 너비(art × artScale)에 맞춘다.
+ * sizeShadow/placeShadow에 그대로 넘기는 발자국 모양 값이다.
+ */
+export function monsterShadowFootprint(art: { w: number }): Footprint {
+  const w = art.w * viewConfig.artScale * 0.6;
+  return { w, d: w * 0.45 };
+}
+
 /** 발밑에 반투명 타원 그림자를 만든다 */
 export function addShadow(scene: Phaser.Scene, x: number, y: number, footprint: Footprint) {
   const shadow = scene.add.image(x, y, TEX.shadow);

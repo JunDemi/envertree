@@ -29,7 +29,10 @@ export interface MonsterDef {
   score: number;
   ranged?: RangedAttack;
 
-  /** 충돌 발자국 크기 (px). 지금은 그림 너비(art.w × artScale)에서 좌우 1px씩 뺀 크기 */
+  /**
+   * 충돌 발자국(히트박스) 크기 (px). 그림 크기(art)와 따로 정한다.
+   * 타일(40) 한 칸 틈을 지나갈 수 있게 타일보다 조금 작게 둔다 (딱 40이면 1px만 어긋나도 걸린다).
+   */
   footprint: { w: number; d: number };
   /**
    * 그림 한 칸 크기 (실제 그림 파일 기준 px, 2배 제작).
@@ -50,7 +53,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 10,
     knockbackResist: 0,
     score: 10,
-    footprint: { w: 46, d: 27 },
+    footprint: { w: 36, d: 36 },
     art: { w: 96, h: 96 },
     color: 0x4ade80,
   },
@@ -62,7 +65,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 6,
     knockbackResist: 0,
     score: 15,
-    footprint: { w: 30, d: 19 },
+    footprint: { w: 36, d: 24 },
     art: { w: 64, h: 64 },
     color: 0xfacc15,
   },
@@ -74,7 +77,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 25,
     knockbackResist: 0.8,
     score: 50,
-    footprint: { w: 72, d: 41 },
+    footprint: { w: 36, d: 36 },
     art: { w: 148, h: 128 },
     color: 0xa855f7,
   },
@@ -93,7 +96,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
       damage: 12,
       friendlyFire: true,
     },
-    footprint: { w: 46, d: 27 },
+    footprint: { w: 36, d: 36 },
     art: { w: 96, h: 96 },
     color: 0xef4444,
     horns: true,

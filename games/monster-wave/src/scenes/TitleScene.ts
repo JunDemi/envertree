@@ -4,7 +4,7 @@ import { TEX, monsterTexture, playerTexture } from "../assets/keys";
 import { sfx } from "../audio/Sfx";
 import { notifyReady } from "../portal";
 import { storage } from "../storage";
-import { addShadow, placeOnGround } from "../view/depth";
+import { addShadow, monsterShadowFootprint, placeOnGround } from "../view/depth";
 import { FONT, textStyle } from "../ui/text";
 import { SCENES } from "./keys";
 
@@ -30,7 +30,7 @@ export class TitleScene extends Phaser.Scene {
       ...Object.values(monsters).map((m) => ({
         key: monsterTexture(m.id),
         name: m.name,
-        footprint: m.footprint,
+        footprint: monsterShadowFootprint(m.art),
         scale: (m.art.w * viewConfig.artScale) / this.textures.getFrame(monsterTexture(m.id)).width,
       })),
     ];
