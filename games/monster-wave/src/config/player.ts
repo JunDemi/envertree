@@ -14,6 +14,7 @@ export const playerConfig = {
   footprint: { w: 22, d: 14 },
   bodyHeight: 20,
   head: { w: 18, d: 12, height: 14 },
-  color: 0x3b82f6,
+  /** 사망 파편 색 */
+  color: 0xfacc15, // 노란색
   headColor: 0x60a5fa,
 } as const;

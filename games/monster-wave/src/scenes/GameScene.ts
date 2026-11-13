@@ -229,7 +229,7 @@ export class GameScene extends Phaser.Scene {
     this.damageNumbers.update();
     this.items.update(this.player.x, this.player.y, (type, x, y) => this.pickup(type, x, y));
     this.checkContactDamage();
-    if (this.combo.update(now)) this.events.emit(GameEvents.combo, 0, 1);
+    if (this.combo.update(deltaMs)) this.events.emit(GameEvents.combo, 0, 1);
     this.updateWaves(deltaMs);
   }
 
@@ -588,7 +588,7 @@ export class GameScene extends Phaser.Scene {
 
     this.kills += 1;
     sfx.play("kill");
-    const combo = this.combo.registerKill(this.time.now);
+    const combo = this.combo.registerKill();
     this.score += Math.round(def.score * this.combo.multiplier);
     this.events.emit(GameEvents.score, this.score);
     this.events.emit(GameEvents.combo, combo, this.combo.multiplier);

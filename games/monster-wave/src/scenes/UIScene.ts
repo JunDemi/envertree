@@ -178,7 +178,7 @@ export class UIScene extends Phaser.Scene {
     if (debugState.enabled) this.refreshDebug();
     // 콤보 남은 시간 게이지는 매 프레임 직접 읽는다
     const combo = this.gameScene.combo;
-    if (combo && combo.count > 0) this.comboFill.width = COMBO_BAR.w * combo.remainingRatio(this.gameScene.time.now);
+    if (combo && combo.count > 0) this.comboFill.width = COMBO_BAR.w * combo.remainingRatio();
   }
 
   /** 디버그 패널 갱신 (켜져 있으면 매 프레임) */

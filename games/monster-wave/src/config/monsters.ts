@@ -39,6 +39,7 @@ export interface MonsterDef {
    * 화면에는 viewConfig.artScale(0.5)을 곱한 크기로 보인다. 코드로 만든 임시 그림도 이 크기에 맞춘다.
    */
   art: { w: number; h: number };
+  /** 처치 파편 색 (코드 임시 그림의 몸 색으로도 쓴다) */
   color: number;
   /** 머리 위 뿔 (임프) */
   horns?: boolean;
@@ -55,7 +56,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     score: 10,
     footprint: { w: 36, d: 36 },
     art: { w: 96, h: 96 },
-    color: 0x4ade80,
+    color: 0x5c3a1e, // 짙은 갈색
   },
   runner: {
     id: "runner",
@@ -67,7 +68,7 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     score: 15,
     footprint: { w: 36, d: 24 },
     art: { w: 64, h: 64 },
-    color: 0xfacc15,
+    color: 0x1e3a8a, // 남색
   },
   brute: {
     id: "brute",
