@@ -7,6 +7,7 @@ import type { Grid } from "./Grid";
  * 카메라 화면(+margin) 밖에 있는 지점 중 무작위로 고른다.
  * 모두 화면 안이면 플레이어에게서 가장 먼 지점을 쓴다.
  * 몬스터끼리 완전히 겹치지 않게 칸 안에서 약간 흩뿌린다.
+ * 큰 몬스터가 바깥벽에 박히지 않게, 발자국(footprint)이 벽 안쪽에 들어오도록 위치를 당긴다.
  */
 export function pickSpawnPoint(
   grid: Grid,
@@ -14,6 +15,7 @@ export function pickSpawnPoint(
   margin: number,
   playerX: number,
   playerY: number,
+  footprint: { w: number; d: number },
 ): { x: number; y: number } | null {
   const open = arenaConfig.spawnPoints.filter((p) => !grid.isBlocked(p.col, p.row));
   if (open.length === 0) return null;
@@ -36,5 +38,12 @@ export function pickSpawnPoint(
 
   const c = grid.tileCenter(pick.col, pick.row);
   const jitter = grid.tile * 0.3;
-  return { x: c.x + (Math.random() - 0.5) * jitter, y: c.y + 10 + (Math.random() - 0.5) * jitter };
+  const x = c.x + (Math.random() - 0.5) * jitter;
+  const y = c.y + 10 + (Math.random() - 0.5) * jitter;
+  const t = grid.tile;
+  const hw = footprint.w / 2 + 1;
+  return {
+    x: Math.min(Math.max(x, t + hw), (grid.cols - 1) * t - hw),
+    y: Math.min(Math.max(y, t + footprint.d + 1), (grid.rows - 1) * t - 1),
+  };
 }

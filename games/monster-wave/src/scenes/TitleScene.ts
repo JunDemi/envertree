@@ -27,10 +27,15 @@ export class TitleScene extends Phaser.Scene {
     // scale: 실제 그림 파일은 2배로 제작되어 있어 artScale을 곱한다
     const lineup: { key: string; name: string; footprint: { w: number; d: number }; scale: number }[] = [
       { key: playerTexture("down"), name: "나", footprint: playerConfig.footprint, scale: viewConfig.artScale },
-      ...Object.values(monsters).map((m) => ({ key: monsterTexture(m.id), name: m.name, footprint: m.footprint, scale: 1 })),
+      ...Object.values(monsters).map((m) => ({
+        key: monsterTexture(m.id),
+        name: m.name,
+        footprint: m.footprint,
+        scale: (m.art.w * viewConfig.artScale) / this.textures.getFrame(monsterTexture(m.id)).width,
+      })),
     ];
     const groundY = 330;
-    const gap = 120;
+    const gap = 140;
     const startX = cx - (gap * (lineup.length - 1)) / 2;
     lineup.forEach((c, i) => {
       const x = startX + gap * i;

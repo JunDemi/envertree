@@ -31,7 +31,10 @@ export function generateTextures(scene: Phaser.Scene) {
 
   // ── 몬스터 ──
   for (const def of Object.values(monsters)) {
-    for (const facing of FACINGS) bakeMonster(g, def, facing);
+    for (const facing of FACINGS) {
+      // 실제 그림이 있는 방향은 건너뛴다
+      if (!scene.textures.exists(monsterTexture(def.id, facing))) bakeMonster(g, def, facing);
+    }
   }
 
   // ── 그림자: 검은 타원 (알파는 스프라이트에서 조절) ──
@@ -142,20 +145,27 @@ const FACES: Record<Facing, { eyes: number[]; pupil: number; mouth: number | nul
   up: { eyes: [], pupil: 0, mouth: null, back: 0.5 },
 };
 
-/** 몬스터: 상자 + 앞면 얼굴(또는 등 무늬) (+ 임프는 뿔). 방향마다 얼굴이 다르다 */
+/** 임시 몬스터 그림에서 윗면 깊이 = 몸 너비 × 이 비율 */
+const MONSTER_TOP_RATIO = 0.35;
+
+/**
+ * 몬스터: 상자 + 앞면 얼굴(또는 등 무늬) (+ 임프는 뿔). 방향마다 얼굴이 다르다.
+ * 그림 크기는 실제 그림 한 칸(def.art) × artScale. 상자가 그 칸을 꽉 채운다 (충돌 발자국과는 별개).
+ */
 function bakeMonster(g: Phaser.GameObjects.Graphics, def: MonsterDef, facing: Facing) {
-  const { w, d } = def.footprint;
+  const width = Math.round(def.art.w * viewConfig.artScale);
+  const height = Math.round(def.art.h * viewConfig.artScale);
   const hornSpace = def.horns ? 7 : 0;
-  const width = w + 2;
-  const height = hornSpace + d + def.height + 1;
+  const w = width - 2;
+  const d = Math.round(w * MONSTER_TOP_RATIO);
+  const h = height - hornSpace - d - 1;
   const face = FACES[facing];
 
   g.clear();
   const top = hornSpace;
-  drawBox(g, 1, top, w, d, def.height, def.color);
+  drawBox(g, 1, top, w, d, h, def.color);
 
   const frontY = top + d; // 앞면 위쪽
-  const h = def.height;
   // 몸 안쪽으로 자른 사각형 (테두리 1px 안쪽)
   const fill = (x: number, y: number, rw: number, rh: number) => {
     const l = Math.max(2, Math.round(x));

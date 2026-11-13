@@ -62,6 +62,8 @@ export class Monster {
     this.flipped = false;
     this.facingChangedAt = 0;
     this.sprite.setTexture(monsterTexture(def.id, "down")).setFlipX(false).clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    // 화면 너비 = 그림 한 칸 × artScale. 실제 그림(2배)이든 코드 임시 그림(1배)이든 같은 크기로 보인다
+    this.sprite.setScale((def.art.w * viewConfig.artScale) / this.sprite.frame.width);
     this.sprite.setVisible(true);
     sizeShadow(this.shadow, def.footprint);
     this.shadow.setVisible(true);

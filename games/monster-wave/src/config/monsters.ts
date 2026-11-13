@@ -29,9 +29,13 @@ export interface MonsterDef {
   score: number;
   ranged?: RangedAttack;
 
-  /** 겉모습: 발자국 크기, 높이, 색 */
+  /** 충돌 발자국 크기 (px). 지금은 그림 너비(art.w × artScale)에서 좌우 1px씩 뺀 크기 */
   footprint: { w: number; d: number };
-  height: number;
+  /**
+   * 그림 한 칸 크기 (실제 그림 파일 기준 px, 2배 제작).
+   * 화면에는 viewConfig.artScale(0.5)을 곱한 크기로 보인다. 코드로 만든 임시 그림도 이 크기에 맞춘다.
+   */
+  art: { w: number; h: number };
   color: number;
   /** 머리 위 뿔 (임프) */
   horns?: boolean;
@@ -46,8 +50,8 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 10,
     knockbackResist: 0,
     score: 10,
-    footprint: { w: 24, d: 14 },
-    height: 26,
+    footprint: { w: 46, d: 27 },
+    art: { w: 96, h: 96 },
     color: 0x4ade80,
   },
   runner: {
@@ -58,8 +62,8 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 6,
     knockbackResist: 0,
     score: 15,
-    footprint: { w: 16, d: 10 },
-    height: 16,
+    footprint: { w: 30, d: 19 },
+    art: { w: 64, h: 64 },
     color: 0xfacc15,
   },
   brute: {
@@ -70,8 +74,8 @@ export const monsters: Record<MonsterId, MonsterDef> = {
     contactDamage: 25,
     knockbackResist: 0.8,
     score: 50,
-    footprint: { w: 38, d: 22 },
-    height: 40,
+    footprint: { w: 72, d: 41 },
+    art: { w: 148, h: 128 },
     color: 0xa855f7,
   },
   imp: {
@@ -89,8 +93,8 @@ export const monsters: Record<MonsterId, MonsterDef> = {
       damage: 12,
       friendlyFire: true,
     },
-    footprint: { w: 22, d: 13 },
-    height: 24,
+    footprint: { w: 46, d: 27 },
+    art: { w: 96, h: 96 },
     color: 0xef4444,
     horns: true,
   },

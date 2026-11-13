@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import { FACINGS, TEX, heldWeaponTexture, playerTexture, type Facing, type PlayerPose } from "./keys";
+import { monsters, type MonsterId } from "../config";
+import { FACINGS, TEX, heldWeaponTexture, monsterTexture, playerTexture, type Facing, type PlayerPose } from "./keys";
 
 /**
  * 실제 그림 파일. 코드로 만든 프로토타입 텍스처와 같은 키로 불러온다.
@@ -21,6 +22,14 @@ const FILE_FACING: Record<string, Facing> = {
   up: "up",
 };
 const POSES: readonly PlayerPose[] = ["stand", "walk", "walk2"];
+
+/**
+ * 몬스터: files/monsters/<id>/<id>-<동작>-<방향>.png
+ * - 지금은 stand(서 있기)만 쓴다. 걷거나 공격할 때도 서 있기 그림을 보여 준다.
+ * - 방향 표기는 플레이어와 같다. 그림이 없는 방향은 코드로 그린 임시 그림을 쓴다.
+ * - 화면 크기는 config/monsters.ts의 art × artScale에 맞춰진다.
+ */
+const monsterFiles = import.meta.glob<string>("./files/monsters/*/*.png", { eager: true, import: "default" });
 
 /**
  * 무기: files/weapon/<이름>.png → 텍스처 키.
@@ -63,6 +72,17 @@ export function loadImages(scene: Phaser.Scene) {
       continue;
     }
     scene.load.image(playerTexture(facing, pose), url);
+  }
+  for (const [path, url] of Object.entries(monsterFiles)) {
+    const m = /([a-z]+)-([a-z0-9]+)-([a-z]+)\.png$/.exec(path);
+    const id = m?.[1] as MonsterId | undefined;
+    const facing = m ? FILE_FACING[m[3]] : undefined;
+    if (!m || !id || !(id in monsters) || !facing) {
+      console.warn(`[images] 이름 규칙에 맞지 않는 파일: ${path}`);
+      continue;
+    }
+    if (m[2] !== "stand") continue; // 걷기·공격 그림은 아직 쓰지 않는다
+    scene.load.image(monsterTexture(id, facing), url);
   }
   for (const [path, url] of Object.entries(weaponFiles)) {
     const name = /([a-z0-9]+)\.png$/.exec(path)?.[1] ?? "";

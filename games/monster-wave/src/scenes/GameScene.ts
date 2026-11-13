@@ -267,9 +267,10 @@ export class GameScene extends Phaser.Scene {
   /** 스폰 지점에 몬스터 하나. 자리가 없으면 false */
   spawnMonster(id: MonsterId, hpScale = 1, speedScale = 1): boolean {
     const view = this.cameras.main.worldView;
-    const point = pickSpawnPoint(this.arena.grid, view, waveConfig.spawnOffscreenMargin, this.player.x, this.player.y);
+    const def = monsterDefs[id];
+    const point = pickSpawnPoint(this.arena.grid, view, waveConfig.spawnOffscreenMargin, this.player.x, this.player.y, def.footprint);
     if (!point) return false;
-    this.monsters.spawn(monsterDefs[id], point.x, point.y, hpScale, speedScale);
+    this.monsters.spawn(def, point.x, point.y, hpScale, speedScale);
     return true;
   }
 
@@ -537,7 +538,7 @@ export class GameScene extends Phaser.Scene {
 
   /** 몬스터 피해 공통 처리: 피해 숫자, 효과음, 처치 */
   private damageMonster(m: Monster, amount: number, now: number, color = "#ffffff") {
-    this.damageNumbers.show(m, m.x, m.y - m.def.height - m.def.footprint.d, amount, color);
+    this.damageNumbers.show(m, m.x, m.y - m.def.art.h * viewConfig.artScale, amount, color);
     if (m.damage(amount, now)) this.killMonster(m);
     else sfx.play("hit");
   }
@@ -582,7 +583,7 @@ export class GameScene extends Phaser.Scene {
     for (const b of this.fireballs.items) if (b.owner === m) b.owner = null;
     const x = m.x;
     const y = m.y;
-    this.effects.burst(x, y - def.height / 2, def.color);
+    this.effects.burst(x, y - (def.art.h * viewConfig.artScale) / 2, def.color);
     this.monsters.kill(m);
 
     this.kills += 1;

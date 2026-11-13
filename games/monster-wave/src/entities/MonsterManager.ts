@@ -1,11 +1,14 @@
 import type Phaser from "phaser";
-import { aiConfig, combatConfig, type MonsterDef } from "../config";
+import { aiConfig, combatConfig, monsters, type MonsterDef } from "../config";
 import { moveWithWalls } from "../world/collide";
 import { hasLineOfSight } from "../world/los";
 import type { FlowField } from "../world/FlowField";
 import type { Grid } from "../world/Grid";
 import { SpatialHash } from "../world/SpatialHash";
 import { Monster } from "./Monster";
+
+/** 가장 큰 몬스터의 발밑 기준점에서 발자국 끝까지 거리. 점 판정 때 공간 해시를 이만큼 넓게 찾는다 */
+const MAX_FOOTPRINT_REACH = Math.max(...Object.values(monsters).map((m) => Math.hypot(m.footprint.w / 2, m.footprint.d)));
 
 /**
  * 몬스터 풀 + 이동(플로우 필드 추적, 벽 충돌, 서로 밀어내기).
@@ -208,7 +211,7 @@ export class MonsterManager {
   /** (x, y) 지점(지면)에 닿은 몬스터. ignore는 제외 (투사체를 쏜 몬스터). 없으면 null */
   hitTest(x: number, y: number, ignore: Monster | null = null): Monster | null {
     const pad = combatConfig.bulletHitPadding;
-    this.hash.query(x, y, 48, this.nearby);
+    this.hash.query(x, y, MAX_FOOTPRINT_REACH + pad, this.nearby);
     for (const m of this.nearby) {
       if (!m.active || m === ignore) continue;
       const { w, d } = m.def.footprint;
